@@ -9,7 +9,11 @@ export default async function AdminShippingPage() {
   const [templates, orders] = await Promise.all([
     prisma.courierTemplate.findMany({ orderBy: [{ isDefault: "desc" }, { id: "asc" }] }),
     prisma.order.findMany({
-      where: { paymentStatus: "입금완료", shippingStatus: { not: "발송완료" } },
+      where: {
+        paymentStatus: "입금완료",
+        shippingStatus: { not: "발송완료" },
+        canceledAt: null,
+      },
       include: { items: true },
       orderBy: { createdAt: "asc" },
     }),

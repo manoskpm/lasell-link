@@ -25,6 +25,8 @@ export function SettingsForm({
     courierLoginId: string;
     courierCustomerCode: string;
     trackingUrlTemplate: string;
+    shippingFee: string;
+    freeShippingOver: string;
   };
   logoUrl: string | null;
 }) {
@@ -217,6 +219,50 @@ export function SettingsForm({
           className="input"
           defaultValue={defaults.senderAddressDetail}
         />
+      </div>
+
+      <div className="h-px bg-zinc-100" />
+      <div>
+        <p className="text-sm font-semibold">배송비</p>
+        <p className="mt-1 text-xs text-zinc-500">
+          손님이 주문할 때 자동으로 계산돼요.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="shippingFee">
+            기본 배송비 (원)
+          </label>
+          <input
+            id="shippingFee"
+            name="shippingFee"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            className="input"
+            defaultValue={defaults.shippingFee}
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="freeShippingOver">
+            무료배송 기준 (원)
+          </label>
+          <input
+            id="freeShippingOver"
+            name="freeShippingOver"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            className="input"
+            defaultValue={defaults.freeShippingOver}
+            placeholder="30000"
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            이 금액 이상 구매하면 배송비가 0원. <b>0으로 두면</b> 무료배송 없이
+            항상 기본 배송비가 붙어요.
+          </p>
+        </div>
       </div>
 
       <div className="h-px bg-zinc-100" />

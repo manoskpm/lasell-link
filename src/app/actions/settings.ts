@@ -55,6 +55,11 @@ export async function updateSettingsAction(
     courierLoginId: nullable(formData.get("courierLoginId")),
     courierCustomerCode: nullable(formData.get("courierCustomerCode")),
     trackingUrlTemplate: nullable(formData.get("trackingUrlTemplate")),
+    shippingFee: Math.max(0, Number(formData.get("shippingFee")) || 0),
+    freeShippingOver: Math.max(
+      0,
+      Number(formData.get("freeShippingOver")) || 0
+    ),
   };
 
   await prisma.setting.upsert({

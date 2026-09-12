@@ -18,30 +18,54 @@ const STATUS_FILTERS = [
   { key: "unpaid", label: "미입금" },
   { key: "toship", label: "발송대기" },
   { key: "done", label: "발송완료" },
+  { key: "canceled", label: "취소" },
 ];
 
 function statusWhere(filter: string) {
-  if (filter === "unpaid") return { paymentStatus: "미입금" };
+  if (filter === "canceled") return { canceledAt: { not: null } };
+  // 취소된 주문은 일반 목록에서 숨김
+  const notCanceled = { canceledAt: null };
+  if (filter === "unpaid") return { ...notCanceled, paymentStatus: "미입금" };
   if (filter === "toship") {
-    return { paymentStatus: "입금완료", shippingStatus: { not: "발송완료" } };
+    return {
+      ...notCanceled,
+      paymentStatus: "입금완료",
+      shippingStatus: { not: "발송완료" },
+    };
   }
-  if (filter === "done") return { shippingStatus: "발송완료" };
-  return {};
+  if (filter === "done") return { ...notCanceled, shippingStatus: "발송완료" };
+  return notCanceled;
 }
 
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; from?: string; to?: string }>;
+  searchParams: Promise<{
+    filter?: string;
+    from?: string;
+    to?: string;
+    q?: string;
+  }>;
 }) {
-  const { filter = "all", from, to } = await searchParams;
+  const { filter = "all", from, to, q } = await searchParams;
   const createdAt = kstRangeToUtc(from, to);
+  const keyword = q?.trim();
 
   const [orders, settings] = await Promise.all([
     prisma.order.findMany({
       where: {
         ...statusWhere(filter),
         ...(createdAt.gte || createdAt.lte ? { createdAt } : {}),
+        ...(keyword
+          ? {
+              OR: [
+                { buyerName: { contains: keyword } },
+                { depositorName: { contains: keyword } },
+                { buyerPhone: { contains: keyword } },
+                { trackingNumber: { contains: keyword } },
+              ],
+            }
+          : {}),
       },
       include: { items: true },
       orderBy: { createdAt: "desc" },
@@ -57,6 +81,10 @@ export default async function AdminOrdersPage({
   const costs = orders.reduce(
     (sum, order) =>
       sum + order.items.reduce((s, item) => s + item.cost * item.quantity, 0),
+    0
+  );
+  const shippingTotal = orders.reduce(
+    (sum, order) => sum + order.shippingFee,
     0
   );
 
@@ -77,7 +105,7 @@ export default async function AdminOrdersPage({
 
   const query = (params: Record<string, string | undefined>) => {
     const search = new URLSearchParams();
-    const merged = { filter, from, to, ...params };
+    const merged = { filter, from, to, q, ...params };
     for (const [key, value] of Object.entries(merged)) {
       if (value) search.set(key, value);
     }
@@ -117,11 +145,38 @@ export default async function AdminOrdersPage({
         ))}
       </div>
 
+      <form method="get" className="flex flex-wrap gap-2">
+        <input type="hidden" name="filter" value={filter} />
+        {from && <input type="hidden" name="from" value={from} />}
+        {to && <input type="hidden" name="to" value={to} />}
+        <input
+          name="q"
+          defaultValue={keyword ?? ""}
+          placeholder="구매자명 · 입금자명 · 연락처 · 운송장 검색"
+          className="input max-w-sm"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white"
+        >
+          검색
+        </button>
+        {keyword && (
+          <Link
+            href={query({ q: "" })}
+            className="flex items-center px-2 text-sm text-zinc-500 underline"
+          >
+            검색 해제
+          </Link>
+        )}
+      </form>
+
       <form
         method="get"
         className="flex flex-wrap items-end gap-2 rounded-2xl border border-zinc-200 bg-white p-4"
       >
         <input type="hidden" name="filter" value={filter} />
+        {keyword && <input type="hidden" name="q" value={keyword} />}
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium">시작일</span>
           <input
@@ -162,9 +217,10 @@ export default async function AdminOrdersPage({
         </div>
       </form>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="주문 건수" value={`${orders.length}건`} />
-        <Stat label="매출" value={won(sales)} />
+        <Stat label="상품매출" value={won(sales)} />
+        <Stat label="배송비" value={won(shippingTotal)} />
         <Stat label="원가" value={won(costs)} />
         <Stat label="예상 순익" value={won(sales - costs)} accent />
       </div>
@@ -234,6 +290,12 @@ export default async function AdminOrdersPage({
                         <p className="text-xs text-zinc-500">
                           {order.buyerPhone}
                         </p>
+                        {order.depositorName &&
+                          order.depositorName !== order.buyerName && (
+                            <p className="text-xs font-medium text-amber-600">
+                              입금 {order.depositorName}
+                            </p>
+                          )}
                       </td>
                       <td className="max-w-[220px] px-4 py-3 text-xs text-zinc-600">
                         {order.zipcode ? `[${order.zipcode}] ` : ""}
@@ -246,23 +308,39 @@ export default async function AdminOrdersPage({
                           </p>
                         ))}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold whitespace-nowrap">
-                        {won(total)}
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <p className="font-semibold">
+                          {won(total + order.shippingFee)}
+                        </p>
+                        {order.shippingFee > 0 && (
+                          <p className="text-xs text-zinc-400">
+                            배송비 {won(order.shippingFee)}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col items-start gap-1">
+                          {order.canceledAt && <StatusChip status="취소됨" />}
                           <StatusChip status={order.paymentStatus} />
-                          <StatusChip status={order.shippingStatus} />
+                          {!order.canceledAt && (
+                            <StatusChip status={order.shippingStatus} />
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <ShipRow
-                          orderId={order.id}
-                          trackingNumber={order.trackingNumber}
-                          shippingStatus={order.shippingStatus}
-                          trackingUrlTemplate={settings.trackingUrlTemplate}
-                          courierName={settings.courierName}
-                        />
+                        {order.canceledAt ? (
+                          <span className="text-xs text-zinc-400">
+                            취소된 주문
+                          </span>
+                        ) : (
+                          <ShipRow
+                            orderId={order.id}
+                            trackingNumber={order.trackingNumber}
+                            shippingStatus={order.shippingStatus}
+                            trackingUrlTemplate={settings.trackingUrlTemplate}
+                            courierName={settings.courierName}
+                          />
+                        )}
                       </td>
                     </tr>
                   );
@@ -287,14 +365,23 @@ export default async function AdminOrdersPage({
                     >
                       #{order.id} {order.buyerName}
                     </Link>
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {order.canceledAt && <StatusChip status="취소됨" />}
                       <StatusChip status={order.paymentStatus} />
-                      <StatusChip status={order.shippingStatus} />
+                      {!order.canceledAt && (
+                        <StatusChip status={order.shippingStatus} />
+                      )}
                     </div>
                   </div>
                   <p className="text-xs text-zinc-500">
                     {order.buyerPhone} · {formatDate(order.createdAt)}
                   </p>
+                  {order.depositorName &&
+                    order.depositorName !== order.buyerName && (
+                      <p className="text-xs font-medium text-amber-600">
+                        입금자명 {order.depositorName}
+                      </p>
+                    )}
                   <div className="border-t border-zinc-100 pt-1.5">
                     {order.items.map((item) => (
                       <p key={item.id} className="text-xs font-medium text-zinc-700">
@@ -302,14 +389,23 @@ export default async function AdminOrdersPage({
                       </p>
                     ))}
                   </div>
-                  <p className="text-base font-bold">{won(total)}</p>
-                  <ShipRow
-                    orderId={order.id}
-                    trackingNumber={order.trackingNumber}
-                    shippingStatus={order.shippingStatus}
-                    trackingUrlTemplate={settings.trackingUrlTemplate}
-                    courierName={settings.courierName}
-                  />
+                  <p className="text-base font-bold">
+                    {won(total + order.shippingFee)}
+                    {order.shippingFee > 0 && (
+                      <span className="ml-1 text-xs font-normal text-zinc-400">
+                        (배송비 {won(order.shippingFee)} 포함)
+                      </span>
+                    )}
+                  </p>
+                  {!order.canceledAt && (
+                    <ShipRow
+                      orderId={order.id}
+                      trackingNumber={order.trackingNumber}
+                      shippingStatus={order.shippingStatus}
+                      trackingUrlTemplate={settings.trackingUrlTemplate}
+                      courierName={settings.courierName}
+                    />
+                  )}
                 </div>
               );
             })}

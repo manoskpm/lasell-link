@@ -18,6 +18,9 @@ export async function GET(request: Request) {
   const createdAt = kstRangeToUtc(from, to);
 
   const where = {
+    ...(filter === "canceled"
+      ? { canceledAt: { not: null } }
+      : { canceledAt: null }),
     ...(filter === "unpaid" ? { paymentStatus: "미입금" } : {}),
     ...(filter === "toship"
       ? { paymentStatus: "입금완료", shippingStatus: { not: "발송완료" } }
@@ -45,17 +48,20 @@ export async function GET(request: Request) {
       id: order.id,
       createdAt: formatDate(order.createdAt),
       buyerName: order.buyerName,
+      depositorName: order.depositorName ?? "",
       buyerPhone: order.buyerPhone,
       zipcode: order.zipcode ?? "",
       address: [order.address, order.addressDetail].filter(Boolean).join(" "),
       items: order.items.map(itemLine).join("\n"),
       quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
       sales,
+      shippingFee: order.shippingFee,
+      received: sales + order.shippingFee,
       cost,
       profit: sales - cost,
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
-      shippingStatus: order.shippingStatus,
+      shippingStatus: order.canceledAt ? "취소됨" : order.shippingStatus,
       trackingNumber: order.trackingNumber ?? "",
       memo: order.memo ?? "",
       loginId: order.user?.loginId ?? "",
@@ -68,12 +74,15 @@ export async function GET(request: Request) {
       { header: "주문번호", key: "id", width: 10 },
       { header: "주문일시", key: "createdAt", width: 16 },
       { header: "구매자", key: "buyerName", width: 12 },
+      { header: "입금자명", key: "depositorName", width: 12 },
       { header: "연락처", key: "buyerPhone", width: 16 },
       { header: "우편번호", key: "zipcode", width: 10 },
       { header: "배송지", key: "address", width: 40 },
       { header: "품목", key: "items", width: 40 },
       { header: "총수량", key: "quantity", width: 8 },
-      { header: "매출", key: "sales", width: 12 },
+      { header: "상품매출", key: "sales", width: 12 },
+      { header: "배송비", key: "shippingFee", width: 10 },
+      { header: "입금액", key: "received", width: 12 },
       { header: "원가", key: "cost", width: 12 },
       { header: "순익", key: "profit", width: 12 },
       { header: "결제수단", key: "paymentMethod", width: 10 },

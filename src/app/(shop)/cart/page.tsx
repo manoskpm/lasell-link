@@ -3,15 +3,20 @@ import { CartItemRow } from "@/components/CartItemRow";
 import { requireUser } from "@/lib/auth";
 import { won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/settings";
+import { amountUntilFreeShipping, calcShippingFee } from "@/lib/shipping";
 
 export default async function CartPage() {
   const user = await requireUser("/login");
 
-  const items = await prisma.cartItem.findMany({
-    where: { userId: user.id },
-    include: { variant: { include: { product: true } } },
-    orderBy: { createdAt: "asc" },
-  });
+  const [items, settings] = await Promise.all([
+    prisma.cartItem.findMany({
+      where: { userId: user.id },
+      include: { variant: { include: { product: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+    getSettings(),
+  ]);
 
   const total = items.reduce(
     (sum, item) =>
@@ -19,6 +24,15 @@ export default async function CartPage() {
       (item.variant.product.price + item.variant.extraPrice) * item.quantity,
     0
   );
+  const shippingFee = calcShippingFee({
+    itemsTotal: total,
+    shippingFee: settings.shippingFee,
+    freeShippingOver: settings.freeShippingOver,
+  });
+  const needMore = amountUntilFreeShipping({
+    itemsTotal: total,
+    freeShippingOver: settings.freeShippingOver,
+  });
 
   if (items.length === 0) {
     return (
@@ -51,9 +65,24 @@ export default async function CartPage() {
         ))}
       </div>
 
-      <div className="card flex items-center justify-between">
-        <span className="text-sm text-zinc-500">총 주문금액</span>
-        <span className="text-xl font-bold">{won(total)}</span>
+      <div className="card flex flex-col gap-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-zinc-500">상품금액</span>
+          <span>{won(total)}</span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-zinc-500">배송비</span>
+          <span>{shippingFee === 0 ? "무료" : won(shippingFee)}</span>
+        </div>
+        {needMore > 0 && (
+          <p className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+            {won(needMore)} 더 담으면 무료배송이에요!
+          </p>
+        )}
+        <div className="flex items-center justify-between border-t border-zinc-100 pt-2">
+          <span className="text-sm text-zinc-500">총 결제금액</span>
+          <span className="text-xl font-bold">{won(total + shippingFee)}</span>
+        </div>
       </div>
 
       <Link href="/checkout" className="btn-primary">

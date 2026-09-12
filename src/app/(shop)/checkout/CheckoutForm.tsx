@@ -97,6 +97,9 @@ export function CheckoutForm({
         />
       </div>
 
+      <div className="h-px bg-zinc-100" />
+      <p className="text-sm font-semibold">결제</p>
+
       <div>
         <label className="label" htmlFor="paymentMethod">
           결제수단
@@ -108,6 +111,22 @@ export function CheckoutForm({
             </option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className="label" htmlFor="depositorName">
+          입금자명
+        </label>
+        <input
+          id="depositorName"
+          name="depositorName"
+          className="input"
+          defaultValue={defaults.buyerName}
+        />
+        <p className="mt-1 text-xs text-zinc-500">
+          통장에 찍히는 이름이 주문자와 다르면 꼭 바꿔주세요. (가족 이름으로
+          입금하는 경우 등)
+        </p>
       </div>
 
       {bankAccount && (

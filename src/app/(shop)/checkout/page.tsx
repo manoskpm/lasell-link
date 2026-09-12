@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { optionLabel, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
+import { calcShippingFee } from "@/lib/shipping";
 import { CheckoutForm } from "./CheckoutForm";
 
 export default async function CheckoutPage() {
@@ -24,6 +25,11 @@ export default async function CheckoutPage() {
       (item.variant.product.price + item.variant.extraPrice) * item.quantity,
     0
   );
+  const shippingFee = calcShippingFee({
+    itemsTotal: total,
+    shippingFee: settings.shippingFee,
+    freeShippingOver: settings.freeShippingOver,
+  });
 
   return (
     <div className="flex flex-col gap-5">
@@ -49,9 +55,17 @@ export default async function CheckoutPage() {
             </span>
           </div>
         ))}
-        <div className="mt-1 flex justify-between border-t border-zinc-100 pt-2 font-bold">
-          <span>합계</span>
+        <div className="mt-1 flex justify-between border-t border-zinc-100 pt-2 text-sm">
+          <span className="text-zinc-500">상품금액</span>
           <span>{won(total)}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-zinc-500">배송비</span>
+          <span>{shippingFee === 0 ? "무료" : won(shippingFee)}</span>
+        </div>
+        <div className="flex justify-between border-t border-zinc-100 pt-2 font-bold">
+          <span>총 결제금액</span>
+          <span>{won(total + shippingFee)}</span>
         </div>
       </section>
 

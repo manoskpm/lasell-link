@@ -30,6 +30,8 @@ export default async function AdminSettingsPage() {
           courierLoginId: settings.courierLoginId ?? "",
           courierCustomerCode: settings.courierCustomerCode ?? "",
           trackingUrlTemplate: settings.trackingUrlTemplate ?? "",
+          shippingFee: String(settings.shippingFee),
+          freeShippingOver: String(settings.freeShippingOver),
         }}
       />
     </div>

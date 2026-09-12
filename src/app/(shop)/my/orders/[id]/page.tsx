@@ -37,8 +37,12 @@ export default async function MyOrderDetailPage({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <p className="text-sm font-semibold text-emerald-600">
-          주문이 접수됐어요
+        <p
+          className={`text-sm font-semibold ${
+            order.canceledAt ? "text-red-500" : "text-emerald-600"
+          }`}
+        >
+          {order.canceledAt ? "취소된 주문이에요" : "주문이 접수됐어요"}
         </p>
         <h1 className="mt-1 text-xl font-bold">주문 #{order.id}</h1>
         <p className="mt-0.5 text-xs text-zinc-400">
@@ -47,9 +51,16 @@ export default async function MyOrderDetailPage({
       </div>
 
       <div className="flex gap-1.5">
+        {order.canceledAt && <StatusChip status="취소됨" />}
         <StatusChip status={order.paymentStatus} />
-        <StatusChip status={order.shippingStatus} />
+        {!order.canceledAt && <StatusChip status={order.shippingStatus} />}
       </div>
+
+      {order.canceledAt && order.cancelReason && (
+        <p className="rounded-xl bg-red-50 px-3.5 py-3 text-sm text-red-600">
+          취소 사유: {order.cancelReason}
+        </p>
+      )}
 
       <section className="card flex flex-col gap-2">
         {order.items.map((item) => (
@@ -66,9 +77,19 @@ export default async function MyOrderDetailPage({
             </span>
           </div>
         ))}
-        <div className="mt-1 flex justify-between border-t border-zinc-100 pt-2 font-bold">
-          <span>합계</span>
+        <div className="mt-1 flex justify-between border-t border-zinc-100 pt-2 text-sm">
+          <span className="text-zinc-500">상품금액</span>
           <span>{won(total)}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-zinc-500">배송비</span>
+          <span>
+            {order.shippingFee === 0 ? "무료" : won(order.shippingFee)}
+          </span>
+        </div>
+        <div className="flex justify-between border-t border-zinc-100 pt-2 font-bold">
+          <span>총 결제금액</span>
+          <span>{won(total + order.shippingFee)}</span>
         </div>
       </section>
 
@@ -82,6 +103,11 @@ export default async function MyOrderDetailPage({
           {order.address} {order.addressDetail ?? ""}
         </p>
         {order.memo && <p className="text-zinc-500">요청: {order.memo}</p>}
+        {order.depositorName && (
+          <p className="mt-1 text-zinc-500">
+            입금자명: {order.depositorName}
+          </p>
+        )}
       </section>
 
       {order.trackingNumber && (

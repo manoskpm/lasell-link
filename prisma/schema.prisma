@@ -22,6 +22,10 @@ model Setting {
   bankAccount     String? // 예: 카카오뱅크 3333-01-1234567 홍길동
   noticeText      String?
 
+  // 배송비 정책
+  shippingFee      Int @default(3000)
+  freeShippingOver Int @default(0) // 0이면 무료배송 조건 없음
+
   // 택배 송장의 '보내는분' 정보
   senderZipcode      String?
   senderAddress      String?
@@ -127,15 +131,18 @@ model Order {
   userId         Int?
   buyerName      String
   buyerPhone     String
+  depositorName  String? // 입금자명 (주문자와 다를 수 있음)
   zipcode        String?
   address        String
   addressDetail  String?
   memo           String?
   paymentMethod  String   @default("계좌이체") // 계좌이체 | 카드 | 기타
-  paymentStatus  String   @default("미입금") // 미입금 | 입금완료
+  paymentStatus  String   @default("미입금") // 미입금 | 입금완료 | 환불완료
   shippingStatus String   @default("접수전") // 접수전 | 접수완료 | 발송완료
   trackingNumber String?
   shippingFee    Int      @default(0)
+  canceledAt     DateTime? // 취소된 주문은 정산·택배접수에서 제외
+  cancelReason   String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

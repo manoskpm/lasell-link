@@ -14,15 +14,18 @@ export default async function AdminHomePage() {
   const [todayOrders, unpaidCount, toShipCount, soldOutCount, memberCount, settings] =
     await Promise.all([
       prisma.order.findMany({
-        where: { createdAt: todayRange },
+        where: { createdAt: todayRange, canceledAt: null },
         include: { items: true },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.order.count({ where: { paymentStatus: "미입금" } }),
+      prisma.order.count({
+        where: { paymentStatus: "미입금", canceledAt: null },
+      }),
       prisma.order.count({
         where: {
           paymentStatus: "입금완료",
           shippingStatus: { not: "발송완료" },
+          canceledAt: null,
         },
       }),
       prisma.productVariant.count({ where: { stock: 0 } }),
@@ -44,7 +47,13 @@ export default async function AdminHomePage() {
           <p className="mt-1 text-sm text-zinc-500">{today} (한국시간 기준)</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/admin/products/new" className="chip bg-zinc-900 text-white">
+          <Link
+            href="/admin/products/quick"
+            className="chip bg-zinc-900 text-white"
+          >
+            ⚡ 방송중 빠른등록
+          </Link>
+          <Link href="/admin/products/new" className="chip bg-zinc-100 text-zinc-700">
             + 상품 등록
           </Link>
           <Link href="/admin/shipping" className="chip bg-zinc-100 text-zinc-700">

@@ -14,12 +14,20 @@ export default async function AdminProductsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">상품 · 재고</h1>
-        <Link
-          href="/admin/products/new"
-          className="chip bg-zinc-900 text-white"
-        >
-          + 상품 등록
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/products/quick"
+            className="chip bg-zinc-900 text-white"
+          >
+            ⚡ 빠른등록
+          </Link>
+          <Link
+            href="/admin/products/new"
+            className="chip bg-zinc-100 text-zinc-700"
+          >
+            + 상세 등록
+          </Link>
+        </div>
       </div>
 
       {products.length === 0 ? (
