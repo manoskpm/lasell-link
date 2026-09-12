@@ -1,11 +1,13 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateStockAction } from "@/app/actions/products";
 import { DeleteProductButton } from "@/components/DeleteProductButton";
 import { ToggleActive } from "@/components/ToggleActive";
 import { optionLabel, won } from "@/lib/format";
+import { isOnSale, sellingPrice } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
+import { ProductEditForm } from "./ProductEditForm";
+import { VariantManager } from "./VariantManager";
 
 export default async function AdminProductDetailPage({
   params,
@@ -26,22 +28,18 @@ export default async function AdminProductDetailPage({
   );
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex gap-3">
-        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
-          {product.imageUrl && (
-            <Image
-              src={product.imageUrl}
-              alt={product.name}
-              fill
-              className="object-cover"
-              sizes="80px"
-            />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-bold leading-snug">{product.name}</h1>
-          <p className="text-base font-bold">{won(product.price)}</p>
+    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold leading-snug">{product.name}</h1>
+          <p className="text-base font-bold">
+            {isOnSale(product) && (
+              <span className="mr-2 text-sm font-normal text-zinc-400 line-through">
+                {won(product.price)}
+              </span>
+            )}
+            {won(sellingPrice(product))}
+          </p>
           <p className="text-xs text-zinc-400">
             원가 {won(product.cost)} · 총 재고 {totalStock}개
           </p>
@@ -49,7 +47,11 @@ export default async function AdminProductDetailPage({
         <ToggleActive productId={product.id} isActive={product.isActive} />
       </div>
 
-      <form action={updateStockAction} className="flex flex-col gap-3">
+      <ProductEditForm product={product} />
+
+      <VariantManager productId={product.id} variants={product.variants} />
+
+      <form action={updateStockAction} className="card flex flex-col gap-3">
         <input type="hidden" name="productId" value={product.id} />
         <p className="text-sm font-semibold">옵션별 재고</p>
 

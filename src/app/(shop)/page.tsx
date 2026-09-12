@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { won } from "@/lib/format";
+import { discountRate, isOnSale, sellingPrice } from "@/lib/price";
 import { getSettings } from "@/lib/settings";
 
 const CATEGORIES = ["전체", "의류", "악세서리", "잡화"];
@@ -91,7 +92,21 @@ export default async function ShopHomePage({
                   <p className="line-clamp-2 text-sm leading-snug">
                     {product.name}
                   </p>
-                  <p className="text-base font-bold">{won(product.price)}</p>
+                  {isOnSale(product) ? (
+                    <>
+                      <p className="text-xs text-zinc-400 line-through">
+                        {won(product.price)}
+                      </p>
+                      <p className="text-base font-bold">
+                        <span className="mr-1 text-red-500">
+                          {discountRate(product)}%
+                        </span>
+                        {won(sellingPrice(product))}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-base font-bold">{won(product.price)}</p>
+                  )}
                   <p className="text-xs text-zinc-400">재고 {totalStock}개</p>
                 </div>
               </Link>

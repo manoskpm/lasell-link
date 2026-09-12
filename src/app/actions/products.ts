@@ -14,6 +14,14 @@ function splitOptions(raw: string) {
     .filter(Boolean);
 }
 
+/// 특가는 비워두거나 0이면 없음으로 처리
+function parseSalePrice(raw: FormDataEntryValue | null, price: number) {
+  const value = Number(String(raw ?? "").trim());
+  if (!value || !Number.isFinite(value) || value <= 0) return null;
+  if (value >= price) return null;
+  return Math.round(value);
+}
+
 export async function createProductAction(
   _prev: FormState,
   formData: FormData
@@ -47,6 +55,7 @@ export async function createProductAction(
     data: {
       name,
       price: Math.round(price),
+      salePrice: parseSalePrice(formData.get("salePrice"), Math.round(price)),
       cost: Math.round(cost) || 0,
       category,
       description,
@@ -59,7 +68,91 @@ export async function createProductAction(
   redirect("/admin/products");
 }
 
-/// 라이브 방송 중 쓰는 빠른 등록. 상품명·가격·재고만 받고 목록으로 이동하지 않음
+/// 등록된 상품의 정보를 수정. 사진은 새로 올릴 때만 교체
+export async function updateProductAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireAdmin();
+
+  const productId = Number(formData.get("productId"));
+  const name = String(formData.get("name") ?? "").trim();
+  const price = Number(formData.get("price") ?? 0);
+  const cost = Number(formData.get("cost") ?? 0);
+
+  if (!productId) return { error: "잘못된 요청이에요." };
+  if (!name || !Number.isFinite(price) || price <= 0) {
+    return { error: "상품명과 판매가를 올바르게 입력해주세요." };
+  }
+
+  const newImage = await saveUploadedImage(
+    formData.get("image") as File | null
+  );
+
+  await prisma.product.update({
+    where: { id: productId },
+    data: {
+      name,
+      price: Math.round(price),
+      salePrice: parseSalePrice(formData.get("salePrice"), Math.round(price)),
+      cost: Math.round(cost) || 0,
+      category: String(formData.get("category") ?? "의류"),
+      description: String(formData.get("description") ?? "").trim() || null,
+      ...(newImage ? { imageUrl: newImage } : {}),
+      ...(formData.get("removeImage") ? { imageUrl: null } : {}),
+    },
+  });
+
+  revalidatePath("/", "layout");
+  return { error: undefined };
+}
+
+/// 상품에 옵션(사이즈/색상) 하나 추가
+export async function addVariantAction(
+  productId: number,
+  size: string,
+  color: string,
+  stock: number
+) {
+  await requireAdmin();
+
+  const cleanSize = size.trim() || null;
+  const cleanColor = color.trim() || null;
+
+  const exists = await prisma.productVariant.findFirst({
+    where: { productId, size: cleanSize, color: cleanColor },
+  });
+  if (exists) return { error: "이미 있는 옵션이에요." };
+
+  await prisma.productVariant.create({
+    data: {
+      productId,
+      size: cleanSize,
+      color: cleanColor,
+      stock: Math.max(0, stock),
+    },
+  });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function deleteVariantAction(variantId: number) {
+  await requireAdmin();
+
+  const count = await prisma.productVariant.count({
+    where: { product: { variants: { some: { id: variantId } } } },
+  });
+  if (count <= 1) {
+    return { error: "옵션은 최소 1개는 있어야 해요." };
+  }
+
+  await prisma.productVariant.delete({ where: { id: variantId } });
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/// 라이브 방송 중 쓰는 빠른 등록. 사진과 옵션은 넣어도 되고 생략해도 됨
 export async function quickCreateProductAction(
   _prev: FormState,
   formData: FormData
@@ -70,18 +163,33 @@ export async function quickCreateProductAction(
   const price = Number(formData.get("price") ?? 0);
   const stock = Math.max(0, Number(formData.get("stock") ?? 0));
   const category = String(formData.get("category") ?? "의류");
+  const sizes = splitOptions(String(formData.get("sizes") ?? ""));
+  const colors = splitOptions(String(formData.get("colors") ?? ""));
 
   if (!name) return { error: "상품명을 입력해주세요." };
   if (!Number.isFinite(price) || price <= 0) {
     return { error: "판매가를 올바르게 입력해주세요." };
   }
 
+  const imageUrl = await saveUploadedImage(
+    formData.get("image") as File | null
+  );
+
+  const sizeList: (string | null)[] = sizes.length > 0 ? sizes : [null];
+  const colorList: (string | null)[] = colors.length > 0 ? colors : [null];
+
   await prisma.product.create({
     data: {
       name,
       price: Math.round(price),
+      salePrice: parseSalePrice(formData.get("salePrice"), Math.round(price)),
       category,
-      variants: { create: [{ size: null, color: null, stock }] },
+      imageUrl,
+      variants: {
+        create: sizeList.flatMap((size) =>
+          colorList.map((color) => ({ size, color, stock }))
+        ),
+      },
     },
   });
 

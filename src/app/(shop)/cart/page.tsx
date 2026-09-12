@@ -3,6 +3,7 @@ import { CartItemRow } from "@/components/CartItemRow";
 import { requireUser } from "@/lib/auth";
 import { won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { sellingPrice } from "@/lib/price";
 import { getSettings } from "@/lib/settings";
 import { amountUntilFreeShipping, calcShippingFee } from "@/lib/shipping";
 
@@ -21,7 +22,8 @@ export default async function CartPage() {
   const total = items.reduce(
     (sum, item) =>
       sum +
-      (item.variant.product.price + item.variant.extraPrice) * item.quantity,
+      (sellingPrice(item.variant.product) + item.variant.extraPrice) *
+        item.quantity,
     0
   );
   const shippingFee = calcShippingFee({
@@ -58,7 +60,9 @@ export default async function CartPage() {
             imageUrl={item.variant.product.imageUrl}
             size={item.variant.size}
             color={item.variant.color}
-            unitPrice={item.variant.product.price + item.variant.extraPrice}
+            unitPrice={
+              sellingPrice(item.variant.product) + item.variant.extraPrice
+            }
             quantity={item.quantity}
             stock={item.variant.stock}
           />

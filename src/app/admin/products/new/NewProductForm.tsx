@@ -30,10 +30,10 @@ export function NewProductForm() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="label" htmlFor="price">
-            판매가 *
+            정가 *
           </label>
           <input
             id="price"
@@ -47,8 +47,22 @@ export function NewProductForm() {
           />
         </div>
         <div>
+          <label className="label" htmlFor="salePrice">
+            특가
+          </label>
+          <input
+            id="salePrice"
+            name="salePrice"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            className="input"
+            placeholder="선택"
+          />
+        </div>
+        <div>
           <label className="label" htmlFor="cost">
-            원가 (정산용)
+            원가
           </label>
           <input
             id="cost"
@@ -61,6 +75,9 @@ export function NewProductForm() {
           />
         </div>
       </div>
+      <p className="-mt-2 text-xs text-zinc-500">
+        특가를 넣으면 손님 화면에 정가에 줄이 그어지고 할인율이 표시돼요.
+      </p>
 
       <div>
         <label className="label" htmlFor="category">

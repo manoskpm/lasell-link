@@ -2,6 +2,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { VariantPicker } from "@/components/VariantPicker";
 import { won } from "@/lib/format";
+import { discountRate, isOnSale, sellingPrice } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
 
 export default async function ProductDetailPage({
@@ -44,7 +45,21 @@ export default async function ProductDetailPage({
           <h1 className="mt-2 text-xl font-bold leading-snug">
             {product.name}
           </h1>
-          <p className="mt-1 text-2xl font-bold">{won(product.price)}</p>
+          {isOnSale(product) ? (
+            <div className="mt-1 flex flex-col gap-0.5">
+              <span className="text-sm text-zinc-400 line-through">
+                {won(product.price)}
+              </span>
+              <span className="text-2xl font-bold">
+                <span className="mr-2 text-red-500">
+                  {discountRate(product)}%
+                </span>
+                {won(sellingPrice(product))}
+              </span>
+            </div>
+          ) : (
+            <p className="mt-1 text-2xl font-bold">{won(product.price)}</p>
+          )}
         </div>
 
         {product.description && (
@@ -55,7 +70,10 @@ export default async function ProductDetailPage({
 
         <div className="h-px bg-zinc-100" />
 
-        <VariantPicker variants={product.variants} basePrice={product.price} />
+        <VariantPicker
+          variants={product.variants}
+          basePrice={sellingPrice(product)}
+        />
       </div>
     </div>
   );

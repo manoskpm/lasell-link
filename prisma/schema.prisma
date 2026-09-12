@@ -85,7 +85,8 @@ model Session {
 model Product {
   id          Int      @id @default(autoincrement())
   name        String
-  price       Int
+  price       Int // 정가
+  salePrice   Int? // 특가(할인가). 있으면 이 가격으로 판매
   cost        Int      @default(0)
   category    String   @default("의류") // 의류 | 악세서리 | 잡화
   description String?

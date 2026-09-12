@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sellingPrice } from "@/lib/price";
 import { calcShippingFee } from "@/lib/shipping";
 import type { FormState } from "./auth";
 
@@ -47,7 +48,7 @@ export async function placeOrderAction(
       const itemsTotal = cartItems.reduce(
         (sum, item) =>
           sum +
-          (item.variant.product.price + item.variant.extraPrice) *
+          (sellingPrice(item.variant.product) + item.variant.extraPrice) *
             item.quantity,
         0
       );
@@ -79,7 +80,8 @@ export async function placeOrderAction(
               productName: item.variant.product.name,
               size: item.variant.size,
               color: item.variant.color,
-              price: item.variant.product.price + item.variant.extraPrice,
+              price:
+                sellingPrice(item.variant.product) + item.variant.extraPrice,
               cost: item.variant.product.cost,
               quantity: item.quantity,
             })),
