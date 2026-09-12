@@ -1,0 +1,160 @@
+// 라셀링크 (라이브셀러 연결) 스키마
+// 참고: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// 쇼핑몰 전역 설정 (항상 id = 1 한 줄만 사용)
+model Setting {
+  id              Int      @id @default(1)
+  shopName        String   @default("내 상점")
+  logoUrl         String?
+  ownerName       String?
+  contactPhone    String?
+  kakaoChannelUrl String? // 예: http://pf.kakao.com/_abcdef
+  chatUrl         String? // 카카오 오픈채팅 등 기타 문의 링크
+  bankAccount     String? // 예: 카카오뱅크 3333-01-1234567 홍길동
+  noticeText      String?
+
+  // 택배 송장의 '보내는분' 정보
+  senderZipcode      String?
+  senderAddress      String?
+  senderAddressDetail String?
+
+  // 택배사 접수 정보 (비밀번호는 저장하지 않음)
+  courierName         String?
+  courierSiteUrl      String?
+  courierLoginId      String?
+  courierCustomerCode String?
+  trackingUrlTemplate String?
+
+  updatedAt DateTime @updatedAt
+}
+
+/// 택배사가 제공하는 대량접수 엑셀 양식과 컬럼 매핑 정보
+model CourierTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  filePath  String // 서버에 저장된 양식 파일 경로 (공개 폴더 아님)
+  sheetName String?
+  headerRow Int      @default(1)
+  startRow  Int      @default(2)
+  mapping   String   @default("{}") // { 필드명: 엑셀 열 번호 } JSON
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  loginId       String   @unique // 로그인 아이디 (이메일 또는 아이디)
+  password      String // scrypt 해시
+  name          String
+  phone         String
+  zipcode       String?
+  address       String?
+  addressDetail String?
+  role          String   @default("CUSTOMER") // CUSTOMER | ADMIN
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions  Session[]
+  cartItems CartItem[]
+  orders    Order[]
+}
+
+model Session {
+  id        String   @id
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  price       Int
+  cost        Int      @default(0)
+  category    String   @default("의류") // 의류 | 악세서리 | 잡화
+  description String?
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variants ProductVariant[]
+}
+
+/// 사이즈/색상 조합별 재고. 옵션이 없는 상품은 size/color가 모두 null인 1개만 가짐
+model ProductVariant {
+  id         Int    @id @default(autoincrement())
+  productId  Int
+  size       String?
+  color      String?
+  stock      Int    @default(0)
+  extraPrice Int    @default(0) // 옵션 추가금
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@unique([productId, size, color])
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  variantId Int
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, variantId])
+}
+
+model Order {
+  id             Int      @id @default(autoincrement())
+  userId         Int?
+  buyerName      String
+  buyerPhone     String
+  zipcode        String?
+  address        String
+  addressDetail  String?
+  memo           String?
+  paymentMethod  String   @default("계좌이체") // 계좌이체 | 카드 | 기타
+  paymentStatus  String   @default("미입금") // 미입금 | 입금완료
+  shippingStatus String   @default("접수전") // 접수전 | 접수완료 | 발송완료
+  trackingNumber String?
+  shippingFee    Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items OrderItem[]
+}
+
+/// 주문 당시 상품 정보를 스냅샷으로 보관 (상품이 수정/삭제돼도 주문 내역 유지)
+model OrderItem {
+  id          Int     @id @default(autoincrement())
+  orderId     Int
+  variantId   Int?
+  productName String
+  size        String?
+  color       String?
+  price       Int
+  cost        Int     @default(0)
+  quantity    Int
+
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+}
