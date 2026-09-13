@@ -1,69 +1,70 @@
 import { APP_NAME, APP_NAME_EN } from "@/lib/app";
 
-/// 라셀링크 로고 마크: LaSell Link (Live + Seller + Link)의 이니셜 LS
+/// 라셀링크 모노그램: 얇은 선 프레임 안에 세리프 L·S를 살짝 겹쳐 넣음.
+/// 색은 currentColor라 밝은 화면·어두운 화면 어디서나 그대로 읽힘
+const SERIF =
+  "'Playfair Display','Didot','Bodoni MT','Times New Roman',Georgia,serif";
+
 export function AppLogoMark({ size = 28 }: { size?: number }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 48 48"
+      viewBox="0 0 120 120"
       fill="none"
       aria-hidden="true"
       className="shrink-0"
     >
       <defs>
-        <linearGradient
-          id="lasell-gradient"
-          x1="0"
-          y1="0"
-          x2="48"
-          y2="48"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0" stopColor="#22D3EE" />
-          <stop offset="0.5" stopColor="#8B5CF6" />
-          <stop offset="1" stopColor="#FB3B53" />
-        </linearGradient>
+        {/* S가 지나가는 자리를 L에서 얇게 덜어내 두 글자가 엮여 보이게 함 */}
         <mask id="lasell-cut">
-          <rect width="48" height="48" fill="#fff" />
+          <rect width="120" height="120" fill="#fff" />
           <text
-            x="22"
-            y="25"
+            x="72"
+            y="62"
+            textAnchor="middle"
             dominantBaseline="central"
             fill="#000"
             stroke="#000"
-            strokeWidth="3.4"
-            fontSize="27"
-            fontWeight="800"
-            fontFamily="Arial, Helvetica, sans-serif"
+            strokeWidth="5.5"
+            fontSize="72"
+            fontFamily={SERIF}
           >
             S
           </text>
         </mask>
       </defs>
 
-      <rect width="48" height="48" rx="13" fill="url(#lasell-gradient)" />
-      {/* L 위에 S가 겹치고, 겹친 자리에 얇은 틈을 내서 두 글자가 엮인 것처럼 보이게 함 */}
+      <rect
+        x="8"
+        y="8"
+        width="104"
+        height="104"
+        rx="38"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
       <text
-        x="11"
-        y="25"
+        x="48"
+        y="62"
+        textAnchor="middle"
         dominantBaseline="central"
-        fill="#fff"
-        fontSize="27"
-        fontWeight="800"
-        fontFamily="Arial, Helvetica, sans-serif"
+        fill="currentColor"
+        fontSize="72"
+        fontFamily={SERIF}
         mask="url(#lasell-cut)"
       >
         L
       </text>
       <text
-        x="22"
-        y="25"
+        x="72"
+        y="62"
+        textAnchor="middle"
         dominantBaseline="central"
-        fill="#fff"
-        fontSize="27"
-        fontWeight="800"
-        fontFamily="Arial, Helvetica, sans-serif"
+        fill="currentColor"
+        fontSize="72"
+        fontFamily={SERIF}
       >
         S
       </text>
