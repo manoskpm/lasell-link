@@ -60,9 +60,14 @@ export async function GET(request: Request) {
       shippingFee: settlement.shippingFee,
       discount: settlement.discount,
       coupon: settlement.coupon?.name ?? "",
-      received: sales + settlement.shippingFee - settlement.discount,
+      shippingCredit: settlement.shippingCredit,
+      received:
+        sales +
+        settlement.shippingFee -
+        settlement.shippingCredit -
+        settlement.discount,
       cost,
-      profit: sales - cost - settlement.discount,
+      profit: sales - cost - settlement.discount - settlement.shippingCredit,
       paymentMethod: settlement.paymentMethod,
       paymentStatus: settlement.paymentStatus,
       shippingStatus: settlement.canceledAt
@@ -89,6 +94,7 @@ export async function GET(request: Request) {
       { header: "총수량", key: "quantity", width: 8 },
       { header: "상품매출", key: "sales", width: 12 },
       { header: "배송비", key: "shippingFee", width: 10 },
+      { header: "배송비차감", key: "shippingCredit", width: 12 },
       { header: "할인", key: "discount", width: 10 },
       { header: "쿠폰", key: "coupon", width: 14 },
       { header: "입금액", key: "received", width: 12 },

@@ -102,7 +102,12 @@ export default async function SettlementDetailPage({
         <div className="flex justify-between border-t border-zinc-100 pt-2 font-bold">
           <span>총 결제금액</span>
           <span>
-            {won(itemsTotal + settlement.shippingFee - settlement.discount)}
+            {won(
+              itemsTotal +
+                settlement.shippingFee -
+                settlement.shippingCredit -
+                settlement.discount
+            )}
           </span>
         </div>
       </section>

@@ -94,6 +94,12 @@ export default async function AdminSettlementDetailPage({
             {settlement.shippingFee === 0 ? "무료" : won(settlement.shippingFee)}
           </span>
         </div>
+        {settlement.shippingCredit > 0 && (
+          <div className="flex justify-between text-sm text-emerald-600">
+            <span>배송비 차감 (무료배송 도달)</span>
+            <span>-{won(settlement.shippingCredit)}</span>
+          </div>
+        )}
         {settlement.discount > 0 && (
           <div className="flex justify-between text-sm text-red-500">
             <span>
@@ -106,7 +112,12 @@ export default async function AdminSettlementDetailPage({
         <div className="flex justify-between text-sm font-medium">
           <span>손님 입금액</span>
           <span>
-            {won(itemsTotal + settlement.shippingFee - settlement.discount)}
+            {won(
+              itemsTotal +
+                settlement.shippingFee -
+                settlement.shippingCredit -
+                settlement.discount
+            )}
           </span>
         </div>
         <div className="flex justify-between text-sm text-zinc-500">
@@ -115,7 +126,11 @@ export default async function AdminSettlementDetailPage({
         </div>
         <div className="flex justify-between text-sm font-semibold text-emerald-600">
           <span>순익</span>
-          <span>{won(itemsTotal - costs - settlement.discount)}</span>
+          <span>
+            {won(
+              itemsTotal - costs - settlement.discount - settlement.shippingCredit
+            )}
+          </span>
         </div>
       </section>
 

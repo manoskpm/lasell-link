@@ -80,7 +80,13 @@ export default async function AdminSettlementsPage({
         s + order.items.reduce((x, i) => x + i.price * i.quantity, 0),
       0
     );
-    return sum + itemsTotal + settlement.shippingFee - settlement.discount;
+    return (
+      sum +
+      itemsTotal +
+      settlement.shippingFee -
+      settlement.shippingCredit -
+      settlement.discount
+    );
   }, 0);
 
   return (
@@ -211,11 +217,18 @@ export default async function AdminSettlementsPage({
 
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-base font-bold">
-                    {won(itemsTotal + settlement.shippingFee - settlement.discount)}
+                    {won(
+                      itemsTotal +
+                        settlement.shippingFee -
+                        settlement.shippingCredit -
+                        settlement.discount
+                    )}
                     <span className="ml-1 text-xs font-normal text-zinc-400">
                       (상품 {won(itemsTotal)}
                       {settlement.shippingFee > 0 &&
                         ` + 배송 ${won(settlement.shippingFee)}`}
+                      {settlement.shippingCredit > 0 &&
+                        ` - 배송비차감 ${won(settlement.shippingCredit)}`}
                       {settlement.discount > 0 &&
                         ` - 할인 ${won(settlement.discount)}`}
                       )

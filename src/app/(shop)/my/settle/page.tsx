@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { isCouponUsable } from "@/lib/coupon";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
+import { planShipping } from "@/lib/shippingPlan";
 import { SettleForm } from "./SettleForm";
 
 export default async function SettlePage() {
@@ -22,6 +23,14 @@ export default async function SettlePage() {
   ]);
 
   if (orders.length === 0) redirect("/my/orders");
+
+  // 배송비는 그날 결제한 금액 전부로 판정 (이미 낸 배송비가 있으면 차감/환급까지 계산)
+  const plan = await planShipping(prisma, {
+    userId: user.id,
+    orderIds: orders.map((order) => order.id),
+    shippingFee: settings.shippingFee,
+    freeShippingOver: settings.freeShippingOver,
+  });
 
   const allTotal = orders.reduce(
     (sum, order) =>
@@ -63,6 +72,15 @@ export default async function SettlePage() {
         shippingPolicy={{
           shippingFee: settings.shippingFee,
           freeShippingOver: settings.freeShippingOver,
+        }}
+        shippingPlan={{
+          fee: plan.fee,
+          credit: plan.credit,
+          bestDayTotal: plan.bestDayTotal,
+          freeReached: plan.freeReached,
+          alreadyCharged: plan.alreadyCharged,
+          zeroOutAmount: plan.zeroOutAmount,
+          untilFree: plan.untilFree,
         }}
         defaults={{
           buyerName: user.name,

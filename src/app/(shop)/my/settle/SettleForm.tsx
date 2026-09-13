@@ -4,7 +4,6 @@ import { useActionState, useMemo, useState } from "react";
 import { createSettlementAction } from "@/app/actions/orders";
 import { applyCoupon, couponLabel } from "@/lib/coupon";
 import { optionLabel, won } from "@/lib/format";
-import { calcShippingFeeByDay, dayTotals } from "@/lib/shipping";
 
 type OrderRow = {
   id: number;
@@ -31,12 +30,22 @@ export function SettleForm({
   orders,
   coupons,
   shippingPolicy,
+  shippingPlan,
   defaults,
   bankAccount,
 }: {
   orders: OrderRow[];
   coupons: CouponRow[];
   shippingPolicy: { shippingFee: number; freeShippingOver: number };
+  shippingPlan: {
+    fee: number;
+    credit: number;
+    bestDayTotal: number;
+    freeReached: boolean;
+    alreadyCharged: number;
+    zeroOutAmount: number;
+    untilFree: number;
+  };
   defaults: {
     buyerName: string;
     buyerPhone: string;
@@ -62,31 +71,7 @@ export function SettleForm({
   );
 
   const coupon = coupons.find((c) => c.id === couponId) ?? null;
-
-  // 배송비는 '그날 보관함에 담긴 금액'으로 판정.
-  // 라방에서 여러 번 나눠 사도 같은 날 합산액이 기준을 넘으면 무료배송
-  const heldOrders = useMemo(
-    () =>
-      orders.map((order) => ({
-        createdAt: new Date(order.createdAt),
-        items: [{ price: order.total, quantity: 1 }],
-      })),
-    [orders]
-  );
-  const shipping = calcShippingFeeByDay({
-    orders: heldOrders,
-    shippingFee: shippingPolicy.shippingFee,
-    freeShippingOver: shippingPolicy.freeShippingOver,
-  });
-  const baseShipping = shipping.fee;
-  const perDay = useMemo(
-    () => [...dayTotals(heldOrders).entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)),
-    [heldOrders]
-  );
-  const untilFree =
-    shippingPolicy.freeShippingOver > 0
-      ? Math.max(0, shippingPolicy.freeShippingOver - shipping.bestDayTotal)
-      : 0;
+  const baseShipping = shippingPlan.fee;
   const applied = applyCoupon({
     coupon: coupon
       ? { ...coupon, isActive: true, expiresAt: null }
@@ -94,7 +79,8 @@ export function SettleForm({
     itemsTotal,
     shippingFee: baseShipping,
   });
-  const finalTotal = itemsTotal + applied.shippingFee - applied.discount;
+  const finalTotal =
+    itemsTotal + applied.shippingFee - applied.discount - shippingPlan.credit;
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -171,25 +157,49 @@ export function SettleForm({
             {applied.shippingFee === 0 ? "무료" : won(applied.shippingFee)}
           </span>
         </div>
+        {shippingPlan.credit > 0 && (
+          <div className="flex justify-between text-sm text-emerald-600">
+            <span>배송비 차감 (무료배송 도달)</span>
+            <span>-{won(shippingPlan.credit)}</span>
+          </div>
+        )}
         {shippingPolicy.freeShippingOver > 0 && (
           <div className="rounded-xl bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
             <p>
-              하루 {won(shippingPolicy.freeShippingOver)} 이상 사시면 배송비가
-              무료예요. (그날 산 금액을 모두 합쳐서 계산)
+              하루에 {won(shippingPolicy.freeShippingOver)} 이상 사시면 배송비가
+              무료예요. (그날 결제한 금액을 모두 합쳐서 계산)
             </p>
-            {perDay.map(([day, total]) => (
-              <p key={day} className="mt-0.5">
-                {day} 누적 <b>{won(total)}</b>
-                {total >= shippingPolicy.freeShippingOver ? (
-                  <span className="ml-1 font-semibold text-emerald-600">
-                    무료배송 적용
-                  </span>
-                ) : null}
-              </p>
-            ))}
-            {untilFree > 0 && (
+            <p className="mt-0.5">
+              오늘 누적 <b>{won(shippingPlan.bestDayTotal)}</b>
+              {shippingPlan.freeReached && (
+                <span className="ml-1 font-semibold text-emerald-600">
+                  무료배송 적용
+                </span>
+              )}
+            </p>
+            {shippingPlan.untilFree > 0 && (
               <p className="mt-0.5 font-semibold text-zinc-800">
-                {won(untilFree)} 더 담으면 무료배송이에요.
+                {won(shippingPlan.untilFree)} 더 담으면 무료배송이에요.
+              </p>
+            )}
+            {shippingPlan.zeroOutAmount > 0 && (
+              <p className="mt-0.5 font-semibold text-emerald-600">
+                먼저 주문하신 건의 배송비 {won(shippingPlan.zeroOutAmount)}도
+                무료로 바뀌어요. (아직 입금 전이라 안 내셔도 돼요)
+              </p>
+            )}
+            {shippingPlan.alreadyCharged > 0 &&
+              shippingPlan.credit === 0 &&
+              shippingPlan.zeroOutAmount === 0 && (
+                <p className="mt-0.5">
+                  오늘 이미 배송비 {won(shippingPlan.alreadyCharged)}를 내셔서
+                  이번엔 배송비가 붙지 않아요.
+                </p>
+              )}
+            {shippingPlan.credit > 0 && (
+              <p className="mt-0.5 font-semibold text-emerald-600">
+                먼저 내신 배송비 {won(shippingPlan.credit)}를 이번 결제에서
+                빼드려요.
               </p>
             )}
           </div>

@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { formatDate, optionLabel, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
-import { calcShippingFeeByDay } from "@/lib/shipping";
+import { planShipping } from "@/lib/shippingPlan";
 
 export default async function MyOrdersPage() {
   const user = await requireUser("/login");
@@ -29,16 +29,14 @@ export default async function MyOrdersPage() {
     0
   );
 
-  // 배송비는 '그날 합산액'으로 판정 (라방에서 여러 번 나눠 사는 경우가 많아서)
-  const shipping = calcShippingFeeByDay({
-    orders: heldOrders,
+  // 배송비는 '그날 결제한 금액 전부'로 판정 (이미 낸 배송비가 있으면 차감까지 계산)
+  const shipping = await planShipping(prisma, {
+    userId: user.id,
+    orderIds: heldOrders.map((order) => order.id),
     shippingFee: settings.shippingFee,
     freeShippingOver: settings.freeShippingOver,
   });
-  const needMore =
-    settings.freeShippingOver > 0
-      ? Math.max(0, settings.freeShippingOver - shipping.bestDayTotal)
-      : 0;
+  const needMore = shipping.untilFree;
 
   return (
     <div className="flex flex-col gap-6">
@@ -105,6 +103,12 @@ export default async function MyOrdersPage() {
                   {shipping.fee === 0 ? "무료" : won(shipping.fee)}
                 </span>
               </div>
+              {shipping.credit > 0 && (
+                <div className="flex items-center justify-between text-sm text-emerald-600">
+                  <span>배송비 차감</span>
+                  <span>-{won(shipping.credit)}</span>
+                </div>
+              )}
               {needMore > 0 && (
                 <p className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
                   하루에 {won(settings.freeShippingOver)} 이상 사시면 무료배송!{" "}
@@ -159,7 +163,10 @@ export default async function MyOrdersPage() {
                   </p>
                   <p className="text-base font-bold">
                     {won(
-                      itemsTotal + settlement.shippingFee - settlement.discount
+                      itemsTotal +
+                        settlement.shippingFee -
+                        settlement.shippingCredit -
+                        settlement.discount
                     )}
                   </p>
                   {settlement.trackingNumber && (

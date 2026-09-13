@@ -174,6 +174,8 @@ model Settlement {
   shippingStatus String    @default("접수전") // 접수전 | 접수완료 | 발송완료
   trackingNumber String?
   shippingFee    Int       @default(0)
+  /// 같은 날 이미 낸 배송비를 되돌려주는 금액 (무료배송 기준을 나중에 넘긴 경우)
+  shippingCredit Int       @default(0)
   discount       Int       @default(0) // 쿠폰 할인액
   couponId       Int?
   canceledAt     DateTime?

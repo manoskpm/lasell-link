@@ -7,7 +7,7 @@ import { applyCoupon } from "@/lib/coupon";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sellingPrice } from "@/lib/price";
-import { calcShippingFeeByDay } from "@/lib/shipping";
+import { planShipping } from "@/lib/shippingPlan";
 import type { FormState } from "./auth";
 
 type Tx = Prisma.TransactionClient;
@@ -48,16 +48,28 @@ async function assertWithinPersonLimit(
     adding,
   }: {
     userId: number;
-    product: { id: number; name: string; limitPerPerson: number };
+    product: {
+      id: number;
+      name: string;
+      limitPerPerson: number;
+      openedAt: Date | null;
+    };
     adding: number;
   }
 ) {
   if (product.limitPerPerson <= 0) return;
 
+  // 이번 방송에서 오픈한 뒤 산 수량만 셈 (다음 방송에 다시 올리면 한도도 새로 시작)
+  const since = product.openedAt ?? undefined;
+
   const bought = await tx.orderItem.aggregate({
     where: {
       variant: { productId: product.id },
-      order: { userId, canceledAt: null },
+      order: {
+        userId,
+        canceledAt: null,
+        ...(since ? { createdAt: { gte: since } } : {}),
+      },
     },
     _sum: { quantity: true },
   });
@@ -231,19 +243,12 @@ export async function createSettlementAction(
         ? await tx.coupon.findUnique({ where: { id: couponId } })
         : null;
 
-      // 배송비는 '그날 보관함에 쌓인 금액'으로 판정.
-      // 라방에서 여러 번 나눠 사도 같은 날 합산액이 기준을 넘으면 무료배송
-      const heldSameDays = await tx.order.findMany({
-        where: {
-          userId: user.id,
-          canceledAt: null,
-          OR: [{ settlementId: null }, { id: { in: orderIds } }],
-        },
-        include: { items: true },
-      });
-
-      const shipping = calcShippingFeeByDay({
-        orders: heldSameDays,
+      // 배송비는 '그날 결제한 금액 전부'로 판정.
+      // 같은 날 이미 배송비를 냈으면 또 받지 않고,
+      // 나중에 더 사서 무료배송 기준을 넘기면 먼저 낸 배송비를 돌려줌(차감)
+      const plan = await planShipping(tx, {
+        userId: user.id,
+        orderIds: orders.map((order) => order.id),
         shippingFee: settings.shippingFee,
         freeShippingOver: settings.freeShippingOver,
       });
@@ -251,7 +256,7 @@ export async function createSettlementAction(
       const applied = applyCoupon({
         coupon,
         itemsTotal,
-        shippingFee: shipping.fee,
+        shippingFee: plan.fee,
       });
 
       const created = await tx.settlement.create({
@@ -268,6 +273,7 @@ export async function createSettlementAction(
           memo: String(formData.get("memo") ?? "").trim() || null,
           paymentMethod: String(formData.get("paymentMethod") ?? "계좌이체"),
           shippingFee: applied.shippingFee,
+          shippingCredit: plan.credit,
           discount: applied.discount,
           couponId: applied.discount > 0 || coupon ? coupon?.id : null,
         },
@@ -277,6 +283,14 @@ export async function createSettlementAction(
         where: { id: { in: orders.map((order) => order.id) } },
         data: { settlementId: created.id },
       });
+
+      // 아직 입금 전인 같은 날 정산은 배송비를 아예 0원으로 고쳐줌
+      if (plan.zeroOutSettlementIds.length > 0) {
+        await tx.settlement.updateMany({
+          where: { id: { in: plan.zeroOutSettlementIds } },
+          data: { shippingFee: 0 },
+        });
+      }
 
       return created;
     });

@@ -17,12 +17,11 @@ export default async function CartPage() {
       include: { variant: { include: { product: true } } },
       orderBy: { createdAt: "asc" },
     }),
-    // 오늘 이미 사둔(보관중) 주문 — 무료배송은 그날 합산액으로 판단하므로 같이 계산
+    // 오늘 이미 결제한 주문 — 무료배송은 그날 결제한 금액 전부로 판단
     prisma.order.findMany({
       where: {
         userId: user.id,
         canceledAt: null,
-        settlementId: null,
         createdAt: kstRangeToUtc(today, today),
       },
       include: { items: true },
@@ -87,7 +86,7 @@ export default async function CartPage() {
         </div>
         {todayTotal > 0 && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-zinc-500">오늘 이미 담아둔 금액</span>
+            <span className="text-zinc-500">오늘 이미 결제한 금액</span>
             <span>{won(todayTotal)}</span>
           </div>
         )}
