@@ -209,9 +209,11 @@ export default async function AdminFinancePage({
               summary.profit >= 0 ? "text-emerald-600" : "text-red-600"
             }`}
           >
-            {summary.profit >= 0
-              ? "이번 달 내 손에 남은 돈이에요"
-              : "매출보다 지출이 많은 달이에요"}
+            {month === thisMonth
+              ? "아직 진행 중인 달이에요 (고정비는 한 달치가 미리 잡혀요)"
+              : summary.profit >= 0
+                ? "이번 달 내 손에 남은 돈이에요"
+                : "매출보다 지출이 많은 달이에요"}
           </p>
         </div>
       </section>
