@@ -1,18 +1,21 @@
 import Link from "next/link";
+import { Calendar } from "./Calendar";
+import { CourierBillForm } from "./CourierBillForm";
 import { ExpenseForm } from "./ExpenseForm";
 import { FixedCostForm } from "./FixedCostForm";
 import { RemoveButton } from "@/components/RemoveButton";
 import {
+  deleteCourierBillAction,
   deleteExpenseAction,
   deleteFixedCostAction,
   toggleFixedCostAction,
 } from "@/app/actions/finance";
 import { todayKst } from "@/lib/date";
 import {
+  dailyBreakdown,
   kstMonthRange,
   monthlySummary,
   shiftMonth,
-  type MonthlySummary,
 } from "@/lib/finance";
 import { formatDateOnly, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -21,7 +24,8 @@ import { prisma } from "@/lib/prisma";
 function wonShort(value: number) {
   const abs = Math.abs(value);
   if (abs >= 100_000_000) return `${(value / 100_000_000).toFixed(1)}억`;
-  if (abs >= 10_000) return `${Math.round(value / 10_000).toLocaleString("ko-KR")}만`;
+  if (abs >= 10_000)
+    return `${Math.round(value / 10_000).toLocaleString("ko-KR")}만`;
   return value.toLocaleString("ko-KR");
 }
 
@@ -29,28 +33,64 @@ function monthLabel(month: string) {
   return `${Number(month.slice(5, 7))}월`;
 }
 
+/// 하루치 구간 (한국 시간 기준)
+function kstDayRange(day: string) {
+  return {
+    gte: new Date(`${day}T00:00:00+09:00`),
+    lt: new Date(new Date(`${day}T00:00:00+09:00`).getTime() + 86_400_000),
+  };
+}
+
 export default async function AdminFinancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; day?: string }>;
 }) {
-  const { month: monthParam } = await searchParams;
-  const thisMonth = todayKst().slice(0, 7);
+  const { month: monthParam, day: dayParam } = await searchParams;
+  const today = todayKst();
+  const thisMonth = today.slice(0, 7);
   const month = /^\d{4}-\d{2}$/.test(monthParam ?? "")
     ? (monthParam as string)
     : thisMonth;
+  const selectedDay =
+    dayParam && dayParam.startsWith(month) && /^\d{4}-\d{2}-\d{2}$/.test(dayParam)
+      ? dayParam
+      : undefined;
 
-  // 이번 달 상세 + 최근 6개월 추이
   const months = Array.from({ length: 6 }, (_, i) => shiftMonth(month, i - 5));
-  const [summary, trend, expenses, fixedCosts] = await Promise.all([
-    monthlySummary(month),
-    Promise.all(months.map((m) => monthlySummary(m))),
-    prisma.expense.findMany({
-      where: { spentAt: kstMonthRange(month) },
-      orderBy: [{ spentAt: "desc" }, { id: "desc" }],
-    }),
-    prisma.fixedCost.findMany({ orderBy: [{ isActive: "desc" }, { id: "asc" }] }),
-  ]);
+  // 청구서 입력칸은 "지난달 발송분"이 기본 (청구서가 한 달 늦게 오기 때문)
+  const lastMonth = shiftMonth(thisMonth, -1);
+
+  const [summary, trend, cells, expenses, fixedCosts, bill, bills] =
+    await Promise.all([
+      monthlySummary(month),
+      Promise.all(months.map((m) => monthlySummary(m))),
+      dailyBreakdown(month),
+      prisma.expense.findMany({
+        where: { spentAt: kstMonthRange(month) },
+        orderBy: [{ spentAt: "desc" }, { id: "desc" }],
+      }),
+      prisma.fixedCost.findMany({
+        orderBy: [{ isActive: "desc" }, { id: "asc" }],
+      }),
+      prisma.courierBill.findUnique({ where: { month: lastMonth } }),
+      prisma.courierBill.findMany({ orderBy: { month: "desc" }, take: 6 }),
+    ]);
+
+  // 날짜를 고른 경우에만 그날 상세를 뽑는다
+  const dayOrders = selectedDay
+    ? await prisma.order.findMany({
+        where: { canceledAt: null, createdAt: kstDayRange(selectedDay) },
+        include: { items: true },
+        orderBy: { id: "desc" },
+      })
+    : [];
+  const dayExpenses = selectedDay
+    ? await prisma.expense.findMany({
+        where: { spentAt: kstDayRange(selectedDay) },
+        orderBy: { id: "desc" },
+      })
+    : [];
 
   const peak = Math.max(1, ...trend.map((m) => Math.abs(m.profit)));
 
@@ -60,7 +100,7 @@ export default async function AdminFinancePage({
         <div>
           <h1 className="text-xl font-bold lg:text-2xl">장부</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            매출·원가·택배비는 주문에서 자동으로 잡혀요. 사장님은 그 외에 쓴 돈만
+            매출과 상품 원가는 주문에서 자동으로 잡혀요. 사장님은 그 외에 쓴 돈만
             적으시면 됩니다.
           </p>
         </div>
@@ -99,9 +139,7 @@ export default async function AdminFinancePage({
           <p className="mt-1 text-2xl font-bold tabular-nums">
             {won(summary.expense)}
           </p>
-          <p className="mt-0.5 text-xs text-zinc-400">
-            원가·택배·고정비 포함
-          </p>
+          <p className="mt-0.5 text-xs text-zinc-400">원가·택배·고정비 포함</p>
         </div>
         <div
           className={`rounded-2xl border p-4 ${
@@ -134,77 +172,171 @@ export default async function AdminFinancePage({
         </div>
       </section>
 
-      {/* 6개월 추이 */}
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5">
-        <h2 className="text-sm font-semibold">최근 6개월 남은 돈</h2>
-        <p className="mt-0.5 text-xs text-zinc-400">
-          막대 위 숫자는 만원 단위예요. 기준선 아래로 내려가면 적자입니다.
-        </p>
+      {/* 달력 + 고른 날 상세 */}
+      <section className="grid gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="card">
+          <h2 className="text-sm font-semibold">
+            {month.replace("-", ". ")} 달력
+          </h2>
+          <p className="mt-0.5 text-xs text-zinc-400">
+            날짜를 누르면 그날 판 것과 쓴 것이 오른쪽에 나와요.
+          </p>
+          <div className="mt-4">
+            <Calendar
+              month={month}
+              cells={cells}
+              today={today}
+              selected={selectedDay}
+            />
+          </div>
+        </div>
 
-        <div className="mt-5 flex items-end gap-2 sm:gap-3">
-          {trend.map((m) => {
-            const ratio = Math.abs(m.profit) / peak;
-            const barHeight = Math.max(3, Math.round(ratio * 88));
-            const isLoss = m.profit < 0;
-            const isCurrent = m.month === month;
-            return (
-              <div
-                key={m.month}
-                className="group relative flex flex-1 flex-col items-center gap-1"
-              >
-                {/* 값 라벨 */}
-                <span
-                  className={`text-[11px] font-semibold tabular-nums ${
-                    isLoss ? "text-red-600" : "text-emerald-700"
-                  }`}
+        <div className="card flex flex-col gap-3">
+          {selectedDay ? (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">
+                  {formatDateOnly(new Date(`${selectedDay}T12:00:00+09:00`))}
+                </p>
+                <Link
+                  href={`/admin/finance?month=${month}`}
+                  className="text-xs text-zinc-400 underline"
                 >
-                  {wonShort(m.profit)}
-                </span>
-
-                {/* 기준선 위 영역 */}
-                <div className="flex h-[92px] w-full items-end justify-center">
-                  {!isLoss && (
-                    <div
-                      className="w-full max-w-[48px] rounded-t bg-emerald-500"
-                      style={{ height: `${barHeight}px` }}
-                    />
-                  )}
-                </div>
-
-                {/* 0 기준선 */}
-                <div className="h-px w-full bg-zinc-300" />
-
-                {/* 기준선 아래 영역 */}
-                <div className="flex h-[36px] w-full items-start justify-center">
-                  {isLoss && (
-                    <div
-                      className="w-full max-w-[48px] rounded-b bg-red-500"
-                      style={{ height: `${Math.min(36, barHeight)}px` }}
-                    />
-                  )}
-                </div>
-
-                <span
-                  className={`text-xs tabular-nums ${
-                    isCurrent ? "font-bold text-zinc-900" : "text-zinc-400"
-                  }`}
-                >
-                  {monthLabel(m.month)}
-                </span>
-
-                {/* 마우스를 올리면 그달 요약 */}
-                <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-900 px-2.5 py-1.5 text-[11px] leading-relaxed text-white opacity-0 transition-opacity group-hover:opacity-100">
-                  <b>{m.month.replace("-", ". ")}</b>
-                  <br />
-                  수입 {won(m.income)}
-                  <br />
-                  지출 {won(m.expense)}
-                  <br />
-                  남은 돈 {won(m.profit)}
-                </div>
+                  닫기
+                </Link>
               </div>
-            );
-          })}
+
+              <div>
+                <p className="text-xs font-medium text-emerald-600">
+                  판매 {dayOrders.length}건
+                </p>
+                {dayOrders.length === 0 ? (
+                  <p className="py-2 text-xs text-zinc-400">주문이 없어요.</p>
+                ) : (
+                  <div className="mt-1 flex flex-col">
+                    {dayOrders.map((order) => {
+                      const total = order.items.reduce(
+                        (sum, item) => sum + item.price * item.quantity,
+                        0
+                      );
+                      return (
+                        <div
+                          key={order.id}
+                          className="flex items-center justify-between gap-2 border-b border-zinc-100 py-1.5 text-sm last:border-b-0"
+                        >
+                          <span className="min-w-0 flex-1 truncate text-zinc-600">
+                            {order.buyerName}
+                            <span className="ml-1.5 text-xs text-zinc-400">
+                              {order.items[0]?.productName ?? ""}
+                            </span>
+                          </span>
+                          <span className="shrink-0 tabular-nums">
+                            {won(total)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-red-500">
+                  지출 {dayExpenses.length}건
+                </p>
+                {dayExpenses.length === 0 ? (
+                  <p className="py-2 text-xs text-zinc-400">적어둔 지출이 없어요.</p>
+                ) : (
+                  <div className="mt-1 flex flex-col">
+                    {dayExpenses.map((expense) => (
+                      <div
+                        key={expense.id}
+                        className="flex items-center justify-between gap-2 border-b border-zinc-100 py-1.5 text-sm last:border-b-0"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-zinc-600">
+                          <span className="chip mr-1.5 bg-zinc-100 text-zinc-500">
+                            {expense.category}
+                          </span>
+                          {expense.memo ?? ""}
+                        </span>
+                        <span className="shrink-0 tabular-nums">
+                          {won(expense.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold">최근 6개월 남은 돈</p>
+              <p className="text-xs text-zinc-400">
+                기준선 아래로 내려가면 적자예요.
+              </p>
+              <div className="mt-2 flex items-end gap-1.5">
+                {trend.map((m) => {
+                  const barHeight = Math.max(
+                    3,
+                    Math.round((Math.abs(m.profit) / peak) * 70)
+                  );
+                  const isLoss = m.profit < 0;
+                  const isCurrent = m.month === month;
+                  return (
+                    <div
+                      key={m.month}
+                      className="group relative flex flex-1 flex-col items-center gap-1"
+                    >
+                      <span
+                        className={`text-[10px] font-semibold tabular-nums ${
+                          isLoss ? "text-red-600" : "text-emerald-700"
+                        }`}
+                      >
+                        {wonShort(m.profit)}
+                      </span>
+                      <div className="flex h-[74px] w-full items-end justify-center">
+                        {!isLoss && (
+                          <div
+                            className="w-full max-w-[34px] rounded-t bg-emerald-500"
+                            style={{ height: `${barHeight}px` }}
+                          />
+                        )}
+                      </div>
+                      <div className="h-px w-full bg-zinc-300" />
+                      <div className="flex h-[30px] w-full items-start justify-center">
+                        {isLoss && (
+                          <div
+                            className="w-full max-w-[34px] rounded-b bg-red-500"
+                            style={{ height: `${Math.min(30, barHeight)}px` }}
+                          />
+                        )}
+                      </div>
+                      <Link
+                        href={`/admin/finance?month=${m.month}`}
+                        className={`text-[11px] tabular-nums ${
+                          isCurrent
+                            ? "font-bold text-zinc-900"
+                            : "text-zinc-400 hover:text-zinc-600"
+                        }`}
+                      >
+                        {monthLabel(m.month)}
+                      </Link>
+
+                      <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-900 px-2.5 py-1.5 text-[11px] leading-relaxed text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        <b>{m.month.replace("-", ". ")}</b>
+                        <br />
+                        수입 {won(m.income)}
+                        <br />
+                        지출 {won(m.expense)}
+                        <br />
+                        남은 돈 {won(m.profit)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </section>
 
@@ -223,7 +355,8 @@ export default async function AdminFinancePage({
           <Row
             label={`택배비 (${summary.shipmentCount}건)`}
             value={summary.courierCost}
-            auto
+            auto={!summary.courierIsActual}
+            badge={summary.courierIsActual ? "실제 청구" : undefined}
           />
           <Row label="쿠폰 할인" value={summary.discount} auto />
           <Row label="고정비" value={summary.fixedCost} />
@@ -232,16 +365,70 @@ export default async function AdminFinancePage({
         </div>
       </section>
 
+      {/* 택배비 청구서 */}
+      <section className="card flex flex-col gap-3">
+        <div>
+          <p className="text-sm font-semibold">택배비 청구서</p>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            박스 크기마다 요금이 달라서 건당 어림값은 정확하지 않아요. 택배사에서
+            온 청구서 금액을 한 번 적어두면 그 달 장부가 실제 금액으로 바뀝니다.
+            청구서는 한 달 늦게 오니까 <b>발송한 달</b>을 골라주세요.
+          </p>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
+          <CourierBillForm
+            months={months}
+            defaultMonth={lastMonth}
+            defaultAmount={bill?.amount}
+          />
+
+          <div className="flex flex-col gap-1">
+            {bills.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 py-8 text-center text-sm text-zinc-500">
+                아직 적어둔 청구서가 없어요. 지금은 건당 어림값으로 계산 중입니다.
+              </p>
+            ) : (
+              bills.map((b) => (
+                <div
+                  key={b.month}
+                  className="flex items-center justify-between gap-3 border-b border-zinc-100 py-2 text-sm last:border-b-0"
+                >
+                  <span className="shrink-0 tabular-nums">
+                    {b.month.replace("-", ". ")} 발송분
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-zinc-400">
+                    {b.billedMonth?.replace("-", ". ")} 청구
+                    {b.memo ? ` · ${b.memo}` : ""}
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums">
+                    {won(b.amount)}
+                  </span>
+                  <RemoveButton
+                    onRemove={async () => {
+                      "use server";
+                      await deleteCourierBillAction(b.month);
+                    }}
+                    confirmText={`${b.month.replace("-", ". ")} 발송분 청구서를 지울까요?`}
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* 지출 입력 + 목록 */}
       <section className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <div className="flex flex-col gap-4">
-          <ExpenseForm today={todayKst()} />
+          <ExpenseForm today={selectedDay ?? today} />
           <div className="card flex flex-col gap-3">
             <p className="text-sm font-semibold">고정비</p>
+            <p className="text-xs text-zinc-500">
+              매달 똑같이 나가는 돈이에요. 한 번만 등록하면 매달 자동으로 빠집니다.
+            </p>
             {fixedCosts.length === 0 ? (
-              <p className="text-xs text-zinc-500">
-                아직 등록한 고정비가 없어요.
-              </p>
+              <p className="text-xs text-zinc-400">아직 등록한 고정비가 없어요.</p>
             ) : (
               <div className="flex flex-col gap-1.5">
                 {fixedCosts.map((cost) => (
@@ -329,11 +516,13 @@ function Row({
   label,
   value,
   auto,
+  badge,
   strong,
 }: {
   label: string;
   value: number;
   auto?: boolean;
+  badge?: string;
   strong?: boolean;
 }) {
   return (
@@ -347,6 +536,11 @@ function Row({
         {auto && (
           <span className="ml-1.5 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500">
             자동
+          </span>
+        )}
+        {badge && (
+          <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-700">
+            {badge}
           </span>
         )}
       </span>

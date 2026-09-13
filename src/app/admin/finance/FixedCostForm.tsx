@@ -10,9 +10,6 @@ export function FixedCostForm() {
   return (
     <form action={formAction} className="flex flex-col gap-2 rounded-xl border border-dashed border-zinc-300 p-3.5">
       <p className="text-sm font-semibold">고정비 추가</p>
-      <p className="text-xs text-zinc-500">
-        매달 똑같이 나가는 돈이에요. 한 번만 등록하면 매달 자동으로 빠집니다.
-      </p>
 
       <input
         name="name"

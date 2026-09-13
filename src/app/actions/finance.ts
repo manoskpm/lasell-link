@@ -83,3 +83,40 @@ export async function deleteFixedCostAction(id: number) {
   revalidatePath("/admin/finance");
   return { ok: true };
 }
+
+/// 택배사 청구서 한 달치 기록.
+/// 청구서는 보통 한 달 늦게 오므로(8월 청구서 = 7월 발송분)
+/// "발송한 달"을 기준으로 저장한다
+export async function saveCourierBillAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireAdmin();
+
+  const month = String(formData.get("month") ?? "").trim();
+  const amount = Math.round(Number(formData.get("amount")) || 0);
+  const memo = String(formData.get("memo") ?? "").trim() || null;
+
+  if (!/^\d{4}-\d{2}$/.test(month)) return { error: "발송한 달을 골라주세요." };
+  if (amount <= 0) return { error: "청구된 금액을 입력해주세요." };
+
+  // 청구서를 받은 달 = 발송한 달의 다음 달
+  const [y, m] = month.split("-").map(Number);
+  const billedMonth = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}`;
+
+  await prisma.courierBill.upsert({
+    where: { month },
+    create: { month, billedMonth, amount, memo },
+    update: { amount, memo },
+  });
+
+  revalidatePath("/admin/finance");
+  return { error: undefined };
+}
+
+export async function deleteCourierBillAction(month: string) {
+  await requireAdmin();
+  await prisma.courierBill.deleteMany({ where: { month } });
+  revalidatePath("/admin/finance");
+  return { ok: true };
+}
