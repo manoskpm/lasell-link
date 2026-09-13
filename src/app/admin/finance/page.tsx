@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Calendar } from "./Calendar";
 import { CourierBillForm } from "./CourierBillForm";
+import { CourierUnitForm } from "./CourierUnitForm";
 import { ExpenseForm } from "./ExpenseForm";
 import { FixedCostForm } from "./FixedCostForm";
 import { RemoveButton } from "@/components/RemoveButton";
@@ -392,15 +393,13 @@ export default async function AdminFinancePage({
           <p className="text-sm font-semibold">나간 돈</p>
           <Row label="상품 원가" value={summary.goodsCost} auto />
           <Row
-            label={`택배비 (${summary.shipmentCount}건)`}
-            value={summary.courierCost}
-            auto={!summary.courierIsActual}
-            badge={summary.courierIsActual ? "실제 청구" : undefined}
-            note={
-              !summary.courierIsActual && summary.shipmentCount > 0
-                ? "청구서 오면 바뀌어요"
-                : undefined
+            label={
+              summary.courierIsActual
+                ? `택배비 (${summary.shipmentCount}건)`
+                : `예상 택배비 (${summary.shipmentCount}건)`
             }
+            value={summary.courierCost}
+            badge={summary.courierIsActual ? "실제 청구서" : undefined}
           />
           <Row label="쿠폰 할인" value={summary.discount} auto />
           <Row label="고정비" value={summary.fixedCost} />
@@ -409,75 +408,105 @@ export default async function AdminFinancePage({
         </div>
       </section>
 
-      {/* 택배비 청구서 */}
-      <section className="card flex flex-col gap-3">
+      {/* 택배비 */}
+      <section className="card flex flex-col gap-4">
         <div>
-          <p className="text-sm font-semibold">택배비 청구서</p>
+          <p className="text-sm font-semibold">택배비</p>
           <p className="mt-0.5 text-xs text-zinc-500">
-            박스 크기마다 요금이 달라서 건당 어림값은 정확하지 않아요. 청구서는
-            다음 달 말에 오니까(6월 발송분 → 7월 말 청구), 받으신 금액을{" "}
-            <b>발송한 달</b>에 적어주시면 그 달 장부가 실제 금액으로 바뀝니다.
+            박스 크기마다 요금이 달라서 정확한 금액은 청구서가 와야 알 수 있어요.
+            그래서 평소에는 <b>건당 얼마</b>로 어림잡아 &quot;예상 택배비&quot;로
+            보여드립니다.
           </p>
         </div>
 
-        {waiting.length > 0 && (
-          <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
-            아직 청구서를 안 적은 달이 있어요 —{" "}
-            <b>
-              {waiting.map((m) => m.replace("-", ". ")).join(", ")} 발송분
-            </b>
-            . 그때까지는 건당 어림값으로 계산 중이라 그 달 손익이 바뀔 수 있어요.
+        <div className="rounded-xl bg-zinc-50 p-3.5">
+          <p className="text-sm font-medium">예상 택배비 단가</p>
+          <p className="mb-2 mt-0.5 text-xs text-zinc-500">
+            평균 얼마쯤 나오는지 한 번만 적어두세요. 청구서를 안 적어도 장부는
+            이 값으로 굴러갑니다.
           </p>
-        )}
+          <CourierUnitForm value={settings.courierCost} />
+        </div>
 
-        <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-          <CourierBillForm
-            months={billMonths}
-            defaultMonth={defaultBillMonth}
-          />
-
-          <div className="flex flex-col gap-1">
-            {bills.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-zinc-200 py-8 text-center text-sm text-zinc-500">
-                아직 적어둔 청구서가 없어요. 지금은 건당 어림값으로 계산 중입니다.
-              </p>
-            ) : (
-              bills.map((b) => (
-                <div
-                  key={b.month}
-                  className="flex items-center justify-between gap-3 border-b border-zinc-100 py-2 text-sm last:border-b-0"
-                >
-                  <span className="shrink-0 tabular-nums">
-                    {b.month.replace("-", ". ")} 발송분
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-zinc-400">
-                    {b.billedMonth?.replace("-", ". ")} 말 청구
-                    {b.memo ? ` · ${b.memo}` : ""}
-                    {estimates.has(b.month) && (
-                      <span className="ml-1.5">
-                        (어림값보다{" "}
-                        {b.amount >= (estimates.get(b.month) ?? 0)
-                          ? `${wonShort(b.amount - (estimates.get(b.month) ?? 0))} 더 나옴`
-                          : `${wonShort((estimates.get(b.month) ?? 0) - b.amount)} 덜 나옴`}
-                        )
-                      </span>
-                    )}
-                  </span>
-                  <span className="shrink-0 font-semibold tabular-nums">
-                    {won(b.amount)}
-                  </span>
-                  <RemoveButton
-                    onRemove={async () => {
-                      "use server";
-                      await deleteCourierBillAction(b.month);
-                    }}
-                    confirmText={`${b.month.replace("-", ". ")} 발송분 청구서를 지울까요?`}
-                  />
-                </div>
-              ))
+        <details className="rounded-xl border border-zinc-200 p-3.5">
+          <summary className="cursor-pointer text-sm font-medium">
+            실제 청구서 금액 적기 (선택)
+            {waiting.length > 0 && (
+              <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
+                {waiting.length}달 밀림
+              </span>
             )}
+          </summary>
+
+          <p className="mt-2 text-xs text-zinc-500">
+            택배사 청구서는 <b>다음 달 말</b>에 와요. 6월에 보낸 택배 요금이 7월
+            말에 청구되는 식이라, 적을 때 <b>보낸 달</b>을 골라야 그 달 장부가
+            맞습니다. 청구서를 적은 달은 &quot;예상&quot; 대신 실제 금액이 들어가요.
+          </p>
+
+          {waiting.length > 0 && (
+            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              아직 청구서를 안 적은 달 —{" "}
+              <b>{waiting.map((m) => m.replace("-", ". ")).join(", ")} 발송분</b>.
+              안 적어도 장부는 예상 금액으로 돌아가요.
+            </p>
+          )}
+
+          <div className="mt-3 grid gap-4 lg:grid-cols-[360px_1fr]">
+            <CourierBillForm
+              months={billMonths}
+              defaultMonth={defaultBillMonth}
+              estimates={Object.fromEntries(estimates)}
+            />
+
+            <div className="flex flex-col gap-1">
+              {bills.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-zinc-200 py-8 text-center text-sm text-zinc-500">
+                  적어둔 청구서가 없어요. 지금은 예상 금액으로 계산 중입니다.
+                </p>
+              ) : (
+                bills.map((b) => {
+                  const guess = estimates.get(b.month) ?? 0;
+                  const gap = b.amount - guess;
+                  // 예상과 2배 넘게 차이나면 달을 잘못 골랐을 수 있다
+                  const odd = guess > 0 && Math.abs(gap) > guess;
+                  return (
+                    <div
+                      key={b.month}
+                      className="flex items-center justify-between gap-3 border-b border-zinc-100 py-2 text-sm last:border-b-0"
+                    >
+                      <span className="shrink-0 tabular-nums">
+                        {b.month.replace("-", ". ")} 발송분
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-xs text-zinc-400">
+                        {b.memo ? `${b.memo} · ` : ""}
+                        {guess > 0 && (
+                          <span className={odd ? "text-amber-600" : ""}>
+                            예상 {wonShort(guess)} →{" "}
+                            {gap >= 0
+                              ? `${wonShort(gap)} 더 나옴`
+                              : `${wonShort(-gap)} 덜 나옴`}
+                            {odd && " · 보낸 달이 맞나요?"}
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums">
+                        {won(b.amount)}
+                      </span>
+                      <RemoveButton
+                        onRemove={async () => {
+                          "use server";
+                          await deleteCourierBillAction(b.month);
+                        }}
+                        confirmText={`${b.month.replace("-", ". ")} 발송분 청구서를 지울까요?`}
+                      />
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
+        </details>
       </section>
 
       {/* 지출 입력 + 목록 */}
@@ -579,14 +608,14 @@ function Row({
   value,
   auto,
   badge,
-  note,
+  badgeTone = "good",
   strong,
 }: {
   label: string;
   value: number;
   auto?: boolean;
   badge?: string;
-  note?: string;
+  badgeTone?: "good" | "guess";
   strong?: boolean;
 }) {
   return (
@@ -603,12 +632,15 @@ function Row({
           </span>
         )}
         {badge && (
-          <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-700">
+          <span
+            className={`ml-1.5 rounded px-1.5 py-0.5 text-[10px] ${
+              badgeTone === "good"
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-amber-100 text-amber-700"
+            }`}
+          >
             {badge}
           </span>
-        )}
-        {note && (
-          <span className="ml-1.5 text-[11px] text-amber-600">{note}</span>
         )}
       </span>
       <span className="tabular-nums">{won(value)}</span>

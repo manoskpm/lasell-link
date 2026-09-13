@@ -120,3 +120,21 @@ export async function deleteCourierBillAction(month: string) {
   revalidatePath("/admin/finance");
   return { ok: true };
 }
+
+/// 택배 건당 단가(어림값 계산에 쓰는 값)를 장부 화면에서 바로 고치게
+export async function updateCourierUnitCostAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireAdmin();
+
+  const courierCost = Math.max(0, Math.round(Number(formData.get("courierCost")) || 0));
+  await prisma.setting.upsert({
+    where: { id: 1 },
+    create: { id: 1, courierCost },
+    update: { courierCost },
+  });
+
+  revalidatePath("/admin/finance");
+  return { error: undefined };
+}
