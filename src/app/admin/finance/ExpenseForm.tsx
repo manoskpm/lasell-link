@@ -9,7 +9,7 @@ export function ExpenseForm({ today }: { today: string }) {
 
   return (
     <form action={formAction} className="card flex flex-col gap-3">
-      <p className="text-sm font-semibold">지출 적기</p>
+      <p className="text-sm font-semibold">지출 기록</p>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -74,7 +74,7 @@ export function ExpenseForm({ today }: { today: string }) {
       )}
 
       <button type="submit" disabled={pending} className="btn-primary">
-        {pending ? "적는 중..." : "지출 추가"}
+        {pending ? "기록 중..." : "지출 기록하기"}
       </button>
     </form>
   );

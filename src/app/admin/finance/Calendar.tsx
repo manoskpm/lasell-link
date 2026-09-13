@@ -92,14 +92,14 @@ export function Calendar({
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-400">
         <span className="flex items-center gap-1">
-          <i className="h-2 w-2 rounded-full bg-emerald-500" /> 들어온 돈 (판매 +
+          <i className="h-2 w-2 rounded-full bg-emerald-500" /> 매출 (상품값 +
           배송비)
         </span>
         <span className="flex items-center gap-1">
-          <i className="h-2 w-2 rounded-full bg-red-500" /> 나간 돈 (상품 원가 +
-          적어둔 지출)
+          <i className="h-2 w-2 rounded-full bg-red-500" /> 지출 (상품 원가 +
+          적어두신 지출)
         </span>
-        <span>고정비·택배비는 달 단위라 아래 표에서 계산돼요</span>
+        <span>고정비·택배비는 달 단위라 아래 표에서 정산돼요</span>
       </div>
     </div>
   );

@@ -140,8 +140,8 @@ export default async function AdminFinancePage({
         <div>
           <h1 className="text-xl font-bold lg:text-2xl">장부</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            매출과 상품 원가는 주문에서 자동으로 잡혀요. 사장님은 그 외에 쓴 돈만
-            적으시면 됩니다.
+            매출과 상품 원가는 주문에서 저절로 채워져요. 사장님은 그 외에 쓰신
+            것만 적어주시면 됩니다.
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -166,7 +166,7 @@ export default async function AdminFinancePage({
       {/* 요약 */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-          <p className="text-xs text-zinc-400">수입</p>
+          <p className="text-xs text-zinc-400">매출</p>
           <p className="mt-1 text-2xl font-bold tabular-nums">
             {won(summary.income)}
           </p>
@@ -179,7 +179,9 @@ export default async function AdminFinancePage({
           <p className="mt-1 text-2xl font-bold tabular-nums">
             {won(summary.expense)}
           </p>
-          <p className="mt-0.5 text-xs text-zinc-400">원가·택배·고정비 포함</p>
+          <p className="mt-0.5 text-xs text-zinc-400">
+            상품 원가 · 택배비 · 고정비까지
+          </p>
         </div>
         <div
           className={`rounded-2xl border p-4 ${
@@ -193,7 +195,7 @@ export default async function AdminFinancePage({
               summary.profit >= 0 ? "text-emerald-700" : "text-red-700"
             }`}
           >
-            {summary.profit >= 0 ? "남은 돈" : "모자란 돈"}
+            {summary.profit >= 0 ? "순이익" : "이달 적자"}
           </p>
           <p
             className={`mt-1 text-2xl font-bold tabular-nums ${
@@ -207,7 +209,9 @@ export default async function AdminFinancePage({
               summary.profit >= 0 ? "text-emerald-600" : "text-red-600"
             }`}
           >
-            수입 − 지출
+            {summary.profit >= 0
+              ? "이번 달 내 손에 남은 돈이에요"
+              : "매출보다 지출이 많은 달이에요"}
           </p>
         </div>
       </section>
@@ -216,10 +220,10 @@ export default async function AdminFinancePage({
       <section className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="card">
           <h2 className="text-sm font-semibold">
-            {month.replace("-", ". ")} 달력
+            {Number(month.slice(5, 7))}월 매출 달력
           </h2>
           <p className="mt-0.5 text-xs text-zinc-400">
-            날짜를 누르면 그날 판 것과 쓴 것이 오른쪽에 나와요.
+            날짜를 누르면 그날 매출과 지출이 오른쪽에 펼쳐져요.
           </p>
           <div className="mt-4">
             <Calendar
@@ -248,7 +252,7 @@ export default async function AdminFinancePage({
 
               <div>
                 <p className="text-xs font-medium text-emerald-600">
-                  판매 {dayOrders.length}건
+                  매출 {dayOrders.length}건
                 </p>
                 {dayOrders.length === 0 ? (
                   <p className="py-2 text-xs text-zinc-400">주문이 없어요.</p>
@@ -310,9 +314,9 @@ export default async function AdminFinancePage({
             </>
           ) : (
             <>
-              <p className="text-sm font-semibold">최근 6개월 남은 돈</p>
+              <p className="text-sm font-semibold">6개월 순이익 흐름</p>
               <p className="text-xs text-zinc-400">
-                기준선 아래로 내려가면 적자예요.
+                기준선 아래로 내려간 달은 적자예요.
               </p>
               <div className="mt-2 flex items-end gap-1.5">
                 {trend.map((m) => {
@@ -365,11 +369,11 @@ export default async function AdminFinancePage({
                       <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-900 px-2.5 py-1.5 text-[11px] leading-relaxed text-white opacity-0 transition-opacity group-hover:opacity-100">
                         <b>{m.month.replace("-", ". ")}</b>
                         <br />
-                        수입 {won(m.income)}
+                        매출 {won(m.income)}
                         <br />
                         지출 {won(m.expense)}
                         <br />
-                        남은 돈 {won(m.profit)}
+                        순이익 {won(m.profit)}
                       </div>
                     </div>
                   );
@@ -383,14 +387,14 @@ export default async function AdminFinancePage({
       {/* 상세 내역 */}
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="card flex flex-col gap-1">
-          <p className="text-sm font-semibold">들어온 돈</p>
-          <Row label="상품 판매" value={summary.productSales} auto />
-          <Row label="받은 배송비" value={summary.shippingIncome} auto />
+          <p className="text-sm font-semibold">매출 내역</p>
+          <Row label="상품 매출" value={summary.productSales} auto />
+          <Row label="배송비 수입" value={summary.shippingIncome} auto />
           <Row label="합계" value={summary.income} strong />
         </div>
 
         <div className="card flex flex-col gap-1">
-          <p className="text-sm font-semibold">나간 돈</p>
+          <p className="text-sm font-semibold">지출 내역</p>
           <Row label="상품 원가" value={summary.goodsCost} auto />
           <Row
             label={
@@ -403,7 +407,7 @@ export default async function AdminFinancePage({
           />
           <Row label="쿠폰 할인" value={summary.discount} auto />
           <Row label="고정비" value={summary.fixedCost} />
-          <Row label="그 외 지출" value={summary.otherExpense} />
+          <Row label="기타 지출" value={summary.otherExpense} />
           <Row label="합계" value={summary.expense} strong />
         </div>
       </section>
@@ -557,7 +561,7 @@ export default async function AdminFinancePage({
         <div className="card flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold">
-              {month.replace("-", ". ")} 지출 내역
+              {Number(month.slice(5, 7))}월 지출 기록
             </p>
             <span className="text-xs text-zinc-400">
               {expenses.length}건 · {won(summary.otherExpense)}
@@ -566,7 +570,7 @@ export default async function AdminFinancePage({
 
           {expenses.length === 0 ? (
             <p className="rounded-xl border border-dashed border-zinc-200 py-10 text-center text-sm text-zinc-500">
-              이번 달에 적은 지출이 없어요.
+              이번 달에 적어두신 지출이 없어요.
             </p>
           ) : (
             <div className="flex flex-col">
