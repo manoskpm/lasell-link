@@ -22,6 +22,11 @@ model Setting {
   bankAccount     String? // 예: 카카오뱅크 3333-01-1234567 홍길동
   noticeText      String?
 
+  /// 방송 종료 후 연장판매 마감 시각. null이면 연장판매 중이 아님
+  saleClosesAt DateTime?
+  /// 이 수량 이하로 남으면 '품절임박'으로 강조하고 맨 위로 올림
+  lowStockAt   Int       @default(3)
+
   // 배송비 정책
   shippingFee      Int @default(3000)
   freeShippingOver Int @default(0) // 0이면 무료배송 조건 없음

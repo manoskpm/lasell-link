@@ -4,6 +4,8 @@ import { VariantPicker } from "@/components/VariantPicker";
 import { won } from "@/lib/format";
 import { discountRate, isOnSale, sellingPrice } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/settings";
+import { isSaleOpen } from "@/lib/stock";
 
 export default async function ProductDetailPage({
   params,
@@ -11,12 +13,16 @@ export default async function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await prisma.product.findUnique({
-    where: { id: Number(id) },
-    include: { variants: { orderBy: { id: "asc" } } },
-  });
+  const [product, settings] = await Promise.all([
+    prisma.product.findUnique({
+      where: { id: Number(id) },
+      include: { variants: { orderBy: { id: "asc" } } },
+    }),
+    getSettings(),
+  ]);
 
   if (!product || !product.isActive || !product.isOpen) notFound();
+  if (!isSaleOpen(settings.saleClosesAt)) notFound();
 
   return (
     <div className="-mx-4 -my-4 flex flex-col">

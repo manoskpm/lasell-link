@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { kstRangeToUtc, todayKst } from "@/lib/date";
 import { planShipping } from "@/lib/shippingPlan";
 
 export type CloseBroadcastResult = {
@@ -14,13 +13,64 @@ export type CloseBroadcastResult = {
   missingAddress: string[];
 };
 
-/// 방송을 종료하면서, 오늘 구매분을 손님별로 묶어 바로 배송 대기로 넘김.
+export type SalePreset = "midnight" | "tomorrow10" | "h3" | "h6";
+
+const KST = 9 * 60 * 60 * 1000;
+
+/// 마감 시각을 한국시간 기준으로 계산. 기기 시간대와 상관없이 같은 결과가 나옴
+function kstDeadline(preset: SalePreset) {
+  const now = Date.now();
+  if (preset === "h3") return new Date(now + 3 * 60 * 60 * 1000);
+  if (preset === "h6") return new Date(now + 6 * 60 * 60 * 1000);
+
+  // 한국 벽시계 날짜를 얻기 위해 9시간을 더한 뒤 UTC 필드를 읽음
+  const kst = new Date(now + KST);
+  const [y, m, d] = [kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()];
+
+  if (preset === "tomorrow10") {
+    return new Date(Date.UTC(y, m, d + 1, 10, 0) - KST);
+  }
+
+  let midnight = Date.UTC(y, m, d, 23, 59) - KST;
+  if (midnight <= now) midnight += 24 * 60 * 60 * 1000;
+  return new Date(midnight);
+}
+
+/// 방송은 끝났지만 포장 전까지 계속 팔기. 마감 시각을 정해두면 손님 화면에 안내가 뜸
+export async function startExtendedSaleAction(preset: SalePreset) {
+  await requireAdmin();
+
+  const when = kstDeadline(preset);
+  if (when.getTime() <= Date.now()) {
+    return { error: "마감 시각을 다시 골라주세요." };
+  }
+
+  await prisma.setting.upsert({
+    where: { id: 1 },
+    create: { id: 1, saleClosesAt: when },
+    update: { saleClosesAt: when },
+  });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/// 연장판매를 취소하고 평소 상태로
+export async function cancelExtendedSaleAction() {
+  await requireAdmin();
+  await prisma.setting.upsert({
+    where: { id: 1 },
+    create: { id: 1 },
+    update: { saleClosesAt: null },
+  });
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/// 판매를 마감하면서, 아직 배송으로 안 넘어간 구매분을 손님별로 묶어 배송 대기로 넘김.
 /// 손님은 방송 중에 사기만 하면 되고, 배송 요청을 따로 누를 필요가 없음.
 export async function closeBroadcastAction(): Promise<CloseBroadcastResult> {
   await requireAdmin();
-
-  const today = todayKst();
-  const todayRange = kstRangeToUtc(today, today);
 
   // 1) 오픈중인 상품 전부 마감
   const closed = await prisma.product.updateMany({
@@ -28,10 +78,10 @@ export async function closeBroadcastAction(): Promise<CloseBroadcastResult> {
     data: { isOpen: false, closedAt: new Date() },
   });
 
-  // 2) 오늘 산 것 중 아직 배송으로 안 넘어간 주문을 손님별로 모음
+  // 2) 아직 배송으로 안 넘어간 주문을 손님별로 모음
+  //    (연장판매로 날짜가 넘어간 주문도 같은 묶음에 들어감)
   const orders = await prisma.order.findMany({
     where: {
-      createdAt: todayRange,
       canceledAt: null,
       settlementId: null,
       userId: { not: null },
@@ -51,7 +101,7 @@ export async function closeBroadcastAction(): Promise<CloseBroadcastResult> {
   const settings = await prisma.setting.upsert({
     where: { id: 1 },
     create: { id: 1 },
-    update: {},
+    update: { saleClosesAt: null }, // 마감했으니 연장판매도 끝
   });
 
   const missingAddress: string[] = [];

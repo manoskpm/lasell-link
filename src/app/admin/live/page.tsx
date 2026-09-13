@@ -2,17 +2,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { CloseAllButton } from "./CloseAllButton";
+import { ExtendedSaleButton } from "./ExtendedSaleButton";
 import { OpenToggle } from "@/components/OpenToggle";
 import { itemLine } from "@/lib/courier";
 import { kstRangeToUtc, todayKst } from "@/lib/date";
 import { formatDate, won } from "@/lib/format";
 import { isOnSale, sellingPrice } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/settings";
 
 export default async function AdminLivePage() {
   const today = todayKst();
 
-  const [products, recentOrders] = await Promise.all([
+  const [products, recentOrders, settings] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true },
       include: { variants: { orderBy: { id: "asc" } } },
@@ -24,7 +26,23 @@ export default async function AdminLivePage() {
       orderBy: { id: "desc" },
       take: 15,
     }),
+    getSettings(),
   ]);
+
+  const pendingOrders = await prisma.order.count({
+    where: { canceledAt: null, settlementId: null },
+  });
+
+  const closesAt = settings.saleClosesAt
+    ? new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(settings.saleClosesAt)
+    : null;
 
   const open = products.filter((product) => product.isOpen);
   const waiting = products.filter((product) => !product.isOpen);
@@ -38,7 +56,8 @@ export default async function AdminLivePage() {
           <h1 className="text-xl font-bold lg:text-2xl">🔴 라이브 오픈 콘솔</h1>
           <p className="mt-1 text-sm text-zinc-500">
             미리 등록해둔 상품을 방송 순서대로 하나씩 &apos;오픈&apos;하세요.
-            오픈한 상품만 손님 화면에 뜹니다. 화면은 5초마다 자동 새로고침돼요.
+            오픈한 상품만 손님 화면에 뜹니다. 손님 화면에서는 품절임박 상품이
+            맨 위로, 품절된 상품은 맨 아래로 자동 정렬돼요.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -48,7 +67,8 @@ export default async function AdminLivePage() {
           >
             ⚡ 빠른등록
           </Link>
-          <CloseAllButton count={open.length} />
+          <ExtendedSaleButton closesAt={closesAt} />
+          <CloseAllButton count={open.length} pendingOrders={pendingOrders} />
         </div>
       </div>
 

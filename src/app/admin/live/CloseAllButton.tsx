@@ -7,8 +7,14 @@ import {
   type CloseBroadcastResult,
 } from "@/app/actions/live";
 
-/// 방송 종료: 오픈중인 상품을 내리고, 오늘 구매분을 손님별로 묶어 배송 대기로 넘김
-export function CloseAllButton({ count }: { count: number }) {
+/// 판매 마감: 오픈중인 상품을 내리고, 아직 안 나간 구매분을 손님별로 묶어 배송 대기로 넘김
+export function CloseAllButton({
+  count,
+  pendingOrders,
+}: {
+  count: number;
+  pendingOrders: number;
+}) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<CloseBroadcastResult | null>(null);
   const router = useRouter();
@@ -16,7 +22,7 @@ export function CloseAllButton({ count }: { count: number }) {
   if (result) {
     return (
       <div className="flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm">
-        <p className="font-semibold text-emerald-800">방송을 종료했어요</p>
+        <p className="font-semibold text-emerald-800">판매를 마감했어요</p>
         <p className="text-emerald-700">
           상품 {result.closedProducts}개 마감 · 손님 {result.shippedCustomers}명
           / 주문 {result.shippedOrders}건이 배송 대기로 넘어갔어요.
@@ -37,11 +43,11 @@ export function CloseAllButton({ count }: { count: number }) {
   return (
     <button
       type="button"
-      disabled={pending || count === 0}
+      disabled={pending || (count === 0 && pendingOrders === 0)}
       onClick={() => {
         if (
           !confirm(
-            `방송을 종료할까요?\n\n오픈중인 상품 ${count}개가 내려가고,\n오늘 구매분이 손님별로 묶여 배송 대기로 넘어갑니다.`
+            `판매를 마감할까요?\n\n오픈중인 상품 ${count}개가 내려가고,\n아직 안 나간 주문 ${pendingOrders}건이 손님별로 묶여 배송 대기로 넘어갑니다.`
           )
         ) {
           return;
@@ -56,9 +62,9 @@ export function CloseAllButton({ count }: { count: number }) {
     >
       {pending
         ? "정리하는 중..."
-        : count === 0
-          ? "오픈중인 상품 없음"
-          : "방송종료 · 배송 넘기기"}
+        : count === 0 && pendingOrders === 0
+          ? "넘길 주문 없음"
+          : `마감 · 배송 넘기기 (${pendingOrders}건)`}
     </button>
   );
 }

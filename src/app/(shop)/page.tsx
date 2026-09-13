@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { won } from "@/lib/format";
 import { discountRate, isOnSale, sellingPrice } from "@/lib/price";
 import { getSettings } from "@/lib/settings";
+import { isSaleOpen, sortForShop, stockState, totalStock } from "@/lib/stock";
 
 const CATEGORIES = ["전체", "의류", "악세서리", "잡화"];
 
@@ -28,8 +29,33 @@ export default async function ShopHomePage({
     getSettings(),
   ]);
 
+  // 연장판매 마감 시각이 지났으면 손님 화면에서는 더 이상 안 보여줌
+  const saleOpen = isSaleOpen(settings.saleClosesAt);
+  const visible = saleOpen ? products : [];
+
+  // 품절임박 → 판매중 → 품절 순서. 다 팔린 건 알아서 아래로 내려감
+  const sorted = sortForShop(visible, settings.lowStockAt);
+
   return (
     <div className="flex flex-col gap-4">
+      {saleOpen && settings.saleClosesAt && (
+        <div className="rounded-xl bg-rose-50 px-3.5 py-3 text-sm">
+          <p className="font-semibold text-rose-700">
+            방송은 끝났지만 아직 구매할 수 있어요
+          </p>
+          <p className="mt-0.5 text-rose-600">
+            {formatDeadline(settings.saleClosesAt)}까지 주문하시면 이번 배송에
+            같이 나가요.
+          </p>
+        </div>
+      )}
+
+      {!saleOpen && (
+        <p className="rounded-xl bg-zinc-100 px-3.5 py-3 text-sm text-zinc-600">
+          이번 방송 판매가 마감됐어요. 다음 방송에서 만나요!
+        </p>
+      )}
+
       {settings.noticeText && (
         <p className="whitespace-pre-wrap rounded-xl bg-zinc-50 px-3.5 py-3 text-sm text-zinc-600">
           {settings.noticeText}
@@ -52,17 +78,15 @@ export default async function ShopHomePage({
         ))}
       </div>
 
-      {products.length === 0 ? (
+      {sorted.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-zinc-200 py-16 text-center text-sm text-zinc-500">
-          아직 오픈된 상품이 없어요. 방송에서 상품이 오픈되면 여기에 떠요.
+          지금은 열린 상품이 없어요. 방송이 시작되면 여기에 떠요.
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          {products.map((product) => {
-            const totalStock = product.variants.reduce(
-              (sum, variant) => sum + variant.stock,
-              0
-            );
+          {sorted.map((product) => {
+            const stock = totalStock(product);
+            const state = stockState(product, settings.lowStockAt);
             return (
               <Link
                 key={product.id}
@@ -83,14 +107,19 @@ export default async function ShopHomePage({
                       이미지 준비중
                     </div>
                   )}
-                  {product.openedAt &&
-                    Date.now() - product.openedAt.getTime() < 10 * 60 * 1000 &&
-                    totalStock > 0 && (
-                      <span className="absolute left-2 top-2 rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                  {state === "임박" && (
+                    <span className="absolute left-2 top-2 rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+                      {stock}개 남음
+                    </span>
+                  )}
+                  {state === "판매중" &&
+                    product.openedAt &&
+                    Date.now() - product.openedAt.getTime() < 10 * 60 * 1000 && (
+                      <span className="absolute left-2 top-2 rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] font-bold text-white">
                         방금 오픈
                       </span>
                     )}
-                  {totalStock === 0 && (
+                  {state === "품절" && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-sm font-semibold text-white">
                       품절
                     </div>
@@ -115,7 +144,17 @@ export default async function ShopHomePage({
                   ) : (
                     <p className="text-base font-bold">{won(product.price)}</p>
                   )}
-                  <p className="text-xs text-zinc-400">재고 {totalStock}개</p>
+                  <p
+                    className={`text-xs ${
+                      state === "임박" ? "font-semibold text-rose-600" : "text-zinc-400"
+                    }`}
+                  >
+                    {state === "품절"
+                      ? "품절"
+                      : state === "임박"
+                        ? `마지막 ${stock}개`
+                        : `재고 ${stock}개`}
+                  </p>
                 </div>
               </Link>
             );
@@ -124,4 +163,17 @@ export default async function ShopHomePage({
       )}
     </div>
   );
+}
+
+/// 마감 시각을 "오늘 밤 11시" / "내일 오전 10시"처럼 읽기 쉽게
+function formatDeadline(when: Date) {
+  const fmt = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return fmt.format(when);
 }
