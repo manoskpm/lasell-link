@@ -13,6 +13,7 @@ import {
 import { todayKst } from "@/lib/date";
 import {
   dailyBreakdown,
+  kstMonthKey,
   kstMonthRange,
   monthlySummary,
   shiftMonth,
@@ -58,10 +59,10 @@ export default async function AdminFinancePage({
       : undefined;
 
   const months = Array.from({ length: 6 }, (_, i) => shiftMonth(month, i - 5));
-  // 청구서 입력칸은 "지난달 발송분"이 기본 (청구서가 한 달 늦게 오기 때문)
+  // 청구서는 다음 달 말에 오므로(6월 발송분 → 7월 말 청구) 항상 지난달이 기준
   const lastMonth = shiftMonth(thisMonth, -1);
 
-  const [summary, trend, cells, expenses, fixedCosts, bill, bills] =
+  const [summary, trend, cells, expenses, fixedCosts, bills] =
     await Promise.all([
       monthlySummary(month),
       Promise.all(months.map((m) => monthlySummary(m))),
@@ -73,8 +74,7 @@ export default async function AdminFinancePage({
       prisma.fixedCost.findMany({
         orderBy: [{ isActive: "desc" }, { id: "asc" }],
       }),
-      prisma.courierBill.findUnique({ where: { month: lastMonth } }),
-      prisma.courierBill.findMany({ orderBy: { month: "desc" }, take: 6 }),
+      prisma.courierBill.findMany({ orderBy: { month: "desc" }, take: 12 }),
     ]);
 
   // 날짜를 고른 경우에만 그날 상세를 뽑는다
@@ -93,6 +93,45 @@ export default async function AdminFinancePage({
     : [];
 
   const peak = Math.max(1, ...trend.map((m) => Math.abs(m.profit)));
+
+  // 청구서 안내는 지금 보고 있는 달과 무관하게 "오늘 기준 지난 6개월"로 따진다
+  const billMonths = Array.from({ length: 6 }, (_, i) =>
+    shiftMonth(lastMonth, i - 5)
+  );
+  const [shipments, settings] = await Promise.all([
+    prisma.settlement.findMany({
+      where: {
+        canceledAt: null,
+        createdAt: {
+          gte: kstMonthRange(billMonths[0]).gte,
+          lt: kstMonthRange(lastMonth).lt,
+        },
+      },
+      select: { createdAt: true },
+    }),
+    prisma.setting.upsert({ where: { id: 1 }, create: { id: 1 }, update: {} }),
+  ]);
+
+  const shipmentsByMonth = new Map<string, number>();
+  for (const s of shipments) {
+    const key = kstMonthKey(s.createdAt);
+    shipmentsByMonth.set(key, (shipmentsByMonth.get(key) ?? 0) + 1);
+  }
+
+  // 발송은 있었는데 청구서를 아직 안 적은 달
+  const billed = new Set(bills.map((b) => b.month));
+  const waiting = billMonths.filter(
+    (m) => (shipmentsByMonth.get(m) ?? 0) > 0 && !billed.has(m)
+  );
+  // 입력칸 기본값은 가장 오래 밀린 달, 없으면 지난달
+  const defaultBillMonth = waiting[0] ?? lastMonth;
+  // 어림값(발송 건수 × 건당 단가)과 실제 청구액을 비교해 보여주려고
+  const estimates = new Map(
+    billMonths.map((m) => [
+      m,
+      (shipmentsByMonth.get(m) ?? 0) * settings.courierCost,
+    ])
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -357,6 +396,11 @@ export default async function AdminFinancePage({
             value={summary.courierCost}
             auto={!summary.courierIsActual}
             badge={summary.courierIsActual ? "실제 청구" : undefined}
+            note={
+              !summary.courierIsActual && summary.shipmentCount > 0
+                ? "청구서 오면 바뀌어요"
+                : undefined
+            }
           />
           <Row label="쿠폰 할인" value={summary.discount} auto />
           <Row label="고정비" value={summary.fixedCost} />
@@ -370,17 +414,26 @@ export default async function AdminFinancePage({
         <div>
           <p className="text-sm font-semibold">택배비 청구서</p>
           <p className="mt-0.5 text-xs text-zinc-500">
-            박스 크기마다 요금이 달라서 건당 어림값은 정확하지 않아요. 택배사에서
-            온 청구서 금액을 한 번 적어두면 그 달 장부가 실제 금액으로 바뀝니다.
-            청구서는 한 달 늦게 오니까 <b>발송한 달</b>을 골라주세요.
+            박스 크기마다 요금이 달라서 건당 어림값은 정확하지 않아요. 청구서는
+            다음 달 말에 오니까(6월 발송분 → 7월 말 청구), 받으신 금액을{" "}
+            <b>발송한 달</b>에 적어주시면 그 달 장부가 실제 금액으로 바뀝니다.
           </p>
         </div>
 
+        {waiting.length > 0 && (
+          <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            아직 청구서를 안 적은 달이 있어요 —{" "}
+            <b>
+              {waiting.map((m) => m.replace("-", ". ")).join(", ")} 발송분
+            </b>
+            . 그때까지는 건당 어림값으로 계산 중이라 그 달 손익이 바뀔 수 있어요.
+          </p>
+        )}
+
         <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
           <CourierBillForm
-            months={months}
-            defaultMonth={lastMonth}
-            defaultAmount={bill?.amount}
+            months={billMonths}
+            defaultMonth={defaultBillMonth}
           />
 
           <div className="flex flex-col gap-1">
@@ -398,8 +451,17 @@ export default async function AdminFinancePage({
                     {b.month.replace("-", ". ")} 발송분
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs text-zinc-400">
-                    {b.billedMonth?.replace("-", ". ")} 청구
+                    {b.billedMonth?.replace("-", ". ")} 말 청구
                     {b.memo ? ` · ${b.memo}` : ""}
+                    {estimates.has(b.month) && (
+                      <span className="ml-1.5">
+                        (어림값보다{" "}
+                        {b.amount >= (estimates.get(b.month) ?? 0)
+                          ? `${wonShort(b.amount - (estimates.get(b.month) ?? 0))} 더 나옴`
+                          : `${wonShort((estimates.get(b.month) ?? 0) - b.amount)} 덜 나옴`}
+                        )
+                      </span>
+                    )}
                   </span>
                   <span className="shrink-0 font-semibold tabular-nums">
                     {won(b.amount)}
@@ -517,12 +579,14 @@ function Row({
   value,
   auto,
   badge,
+  note,
   strong,
 }: {
   label: string;
   value: number;
   auto?: boolean;
   badge?: string;
+  note?: string;
   strong?: boolean;
 }) {
   return (
@@ -542,6 +606,9 @@ function Row({
           <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-700">
             {badge}
           </span>
+        )}
+        {note && (
+          <span className="ml-1.5 text-[11px] text-amber-600">{note}</span>
         )}
       </span>
       <span className="tabular-nums">{won(value)}</span>

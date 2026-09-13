@@ -14,6 +14,8 @@ export type MonthlySummary = {
   courierCost: number;
   /// 택배비가 실제 청구서 금액이면 true, 건당 단가로 어림잡은 값이면 false
   courierIsActual: boolean;
+  /// 건당 단가로 어림잡은 택배비 (실제 청구서와 비교해서 보여주려고 같이 들고 다닌다)
+  courierEstimate: number;
   fixedCost: number;
   otherExpense: number;
   discount: number;
@@ -71,9 +73,8 @@ export async function monthlySummary(month: string): Promise<MonthlySummary> {
   // 실제 청구서를 적어두면 그 금액이 우선 (포장 크기마다 요금이 달라 어림값은 부정확하다)
   const shipmentCount = settlements.length;
   const courierIsActual = courierBill !== null;
-  const courierCost = courierBill
-    ? courierBill.amount
-    : shipmentCount * settings.courierCost;
+  const courierEstimate = shipmentCount * settings.courierCost;
+  const courierCost = courierBill ? courierBill.amount : courierEstimate;
 
   const otherExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
   const fixedCost = fixedCosts.reduce((sum, f) => sum + f.amount, 0);
@@ -89,6 +90,7 @@ export async function monthlySummary(month: string): Promise<MonthlySummary> {
     goodsCost,
     courierCost,
     courierIsActual,
+    courierEstimate,
     fixedCost,
     otherExpense,
     discount,

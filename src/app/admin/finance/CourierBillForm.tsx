@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { saveCourierBillAction } from "@/app/actions/finance";
 import { shiftMonth } from "@/lib/month";
 
@@ -13,16 +13,15 @@ function monthText(month: string) {
 export function CourierBillForm({
   months,
   defaultMonth,
-  defaultAmount,
 }: {
   months: string[];
   defaultMonth: string;
-  defaultAmount?: number;
 }) {
   const [state, formAction, pending] = useActionState(
     saveCourierBillAction,
     null
   );
+  const [month, setMonth] = useState(defaultMonth);
 
   return (
     <form action={formAction} className="flex flex-col gap-2.5">
@@ -35,7 +34,8 @@ export function CourierBillForm({
             id="billMonth"
             name="month"
             className="input"
-            defaultValue={defaultMonth}
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
           >
             {months.map((m) => (
               <option key={m} value={m}>
@@ -56,7 +56,6 @@ export function CourierBillForm({
             min={0}
             className="input"
             placeholder="820000"
-            defaultValue={defaultAmount || ""}
             required
           />
         </div>
@@ -69,8 +68,8 @@ export function CourierBillForm({
       />
 
       <p className="text-xs text-zinc-400">
-        {monthText(shiftMonth(defaultMonth, 1))}에 받은 청구서가{" "}
-        {monthText(defaultMonth)} 발송분이에요.
+        {monthText(shiftMonth(month, 1))} 말에 받는 청구서가 {monthText(month)}{" "}
+        발송분이에요.
       </p>
 
       {state?.error && (
