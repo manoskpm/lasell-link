@@ -18,6 +18,8 @@ export type MonthlySummary = {
   courierEstimate: number;
   fixedCost: number;
   otherExpense: number;
+  /// 그중 "사입"으로 적어둔 금액. 상품 원가와 겹치는지 보려고 따로 센다
+  purchaseExpense: number;
   discount: number;
   expense: number;
   /// 결과
@@ -77,6 +79,9 @@ export async function monthlySummary(month: string): Promise<MonthlySummary> {
   const courierCost = courierBill ? courierBill.amount : courierEstimate;
 
   const otherExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const purchaseExpense = expenses
+    .filter((e) => e.category === "사입")
+    .reduce((sum, e) => sum + e.amount, 0);
   const fixedCost = fixedCosts.reduce((sum, f) => sum + f.amount, 0);
 
   const income = productSales + shippingIncome;
@@ -93,6 +98,7 @@ export async function monthlySummary(month: string): Promise<MonthlySummary> {
     courierEstimate,
     fixedCost,
     otherExpense,
+    purchaseExpense,
     discount,
     expense,
     profit: income - expense,

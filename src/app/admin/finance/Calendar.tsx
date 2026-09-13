@@ -96,8 +96,8 @@ export function Calendar({
           배송비)
         </span>
         <span className="flex items-center gap-1">
-          <i className="h-2 w-2 rounded-full bg-red-500" /> 지출 (상품 원가 +
-          적어두신 지출)
+          <i className="h-2 w-2 rounded-full bg-red-500" /> 지출 (그날 적어두신
+          돈)
         </span>
         <span>고정비·택배비는 달 단위라 아래 표에서 정산돼요</span>
       </div>

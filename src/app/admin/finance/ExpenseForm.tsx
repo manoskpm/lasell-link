@@ -10,6 +10,9 @@ export function ExpenseForm({ today }: { today: string }) {
   return (
     <form action={formAction} className="card flex flex-col gap-3">
       <p className="text-sm font-semibold">지출 기록</p>
+      <p className="-mt-1 text-xs text-zinc-500">
+        사입하신 날 나간 돈, 포장재, 광고비… 나간 건 다 여기에 적으시면 돼요.
+      </p>
 
       <div className="grid grid-cols-2 gap-3">
         <div>

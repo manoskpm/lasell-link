@@ -140,8 +140,8 @@ export default async function AdminFinancePage({
         <div>
           <h1 className="text-xl font-bold lg:text-2xl">장부</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            매출과 상품 원가는 주문에서 저절로 채워져요. 사장님은 그 외에 쓰신
-            것만 적어주시면 됩니다.
+            매출은 주문에서 저절로 채워져요. 사장님은 사입비처럼 나가신 돈만
+            적어주시면 됩니다.
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -180,7 +180,7 @@ export default async function AdminFinancePage({
             {won(summary.expense)}
           </p>
           <p className="mt-0.5 text-xs text-zinc-400">
-            상품 원가 · 택배비 · 고정비까지
+            사입비 · 택배비 · 고정비까지
           </p>
         </div>
         <div
@@ -397,7 +397,9 @@ export default async function AdminFinancePage({
 
         <div className="card flex flex-col gap-1">
           <p className="text-sm font-semibold">지출 내역</p>
-          <Row label="상품 원가" value={summary.goodsCost} auto />
+          {summary.goodsCost > 0 && (
+            <Row label="상품 원가" value={summary.goodsCost} auto />
+          )}
           <Row
             label={
               summary.courierIsActual
@@ -409,8 +411,18 @@ export default async function AdminFinancePage({
           />
           <Row label="쿠폰 할인" value={summary.discount} auto />
           <Row label="고정비" value={summary.fixedCost} />
-          <Row label="기타 지출" value={summary.otherExpense} />
+          <Row
+            label={summary.purchaseExpense > 0 ? "사입 · 기타 지출" : "기타 지출"}
+            value={summary.otherExpense}
+          />
           <Row label="합계" value={summary.expense} strong />
+
+          {summary.goodsCost > 0 && summary.purchaseExpense > 0 && (
+            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              상품에 적어두신 원가가 이미 빠지고 있는데 사입 지출도 적혀 있어요.
+              같은 돈이 두 번 빠질 수 있으니 둘 중 하나만 쓰시는 게 좋아요.
+            </p>
+          )}
         </div>
       </section>
 
