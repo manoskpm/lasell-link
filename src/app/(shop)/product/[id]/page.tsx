@@ -79,6 +79,7 @@ export default async function ProductDetailPage({
         <VariantPicker
           variants={product.variants}
           basePrice={sellingPrice(product)}
+          limitPerPerson={product.limitPerPerson}
         />
       </div>
     </div>
