@@ -8,7 +8,7 @@ const ITEMS = [
   { href: "/admin", label: "홈", desc: "오늘 현황" },
   { href: "/admin/live", label: "라이브", desc: "상품 오픈" },
   { href: "/admin/products", label: "상품", desc: "등록 · 재고" },
-  { href: "/admin/orders", label: "주문", desc: "매출 · 보관함" },
+  { href: "/admin/orders", label: "주문", desc: "매출 · 배송대기" },
   { href: "/admin/settlements", label: "정산", desc: "합배송 · 발송" },
   { href: "/admin/coupons", label: "쿠폰", desc: "발행 · 관리" },
   { href: "/admin/shipping", label: "택배", desc: "접수 · 송장" },

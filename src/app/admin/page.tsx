@@ -88,7 +88,7 @@ export default async function AdminHomePage() {
         <Stat label="오늘 주문" value={`${todayOrders.length}건`} />
         <Stat label="오늘 매출" value={won(todaySales)} />
         <Stat label="오픈중 상품" value={`${openCount}개`} />
-        <Stat label="보관중 주문" value={`${heldCount}건`} />
+        <Stat label="배송대기 주문" value={`${heldCount}건`} />
         <Stat label="미입금 정산" value={`${unpaidCount}건`} highlight={unpaidCount > 0} />
         <Stat label="발송대기" value={`${toShip.length}건`} highlight={toShip.length > 0} />
       </div>
@@ -164,7 +164,7 @@ export default async function AdminHomePage() {
                               <StatusChip status={order.settlement.paymentStatus} />
                             </>
                           ) : (
-                            <StatusChip status="보관중" />
+                            <StatusChip status="배송대기" />
                           )}
                         </div>
                       </td>
@@ -187,7 +187,7 @@ export default async function AdminHomePage() {
                     {order.settlement ? (
                       <StatusChip status={order.settlement.paymentStatus} />
                     ) : (
-                      <StatusChip status="보관중" />
+                      <StatusChip status="배송대기" />
                     )}
                   </div>
                   <div className="border-t border-zinc-100 pt-1.5">

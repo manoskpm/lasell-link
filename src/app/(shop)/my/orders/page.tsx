@@ -42,16 +42,16 @@ export default async function MyOrdersPage() {
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3">
         <div>
-          <h1 className="text-xl font-bold">보관함</h1>
+          <h1 className="text-xl font-bold">구매한 상품</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            아직 배송 신청 안 한 주문이에요. 모아서 한 번에 정산하면 배송비가
-            한 번만 나가요.
+            방송이 끝나면 오늘 사신 상품이 <b>자동으로 한 번에 배송</b>돼요.
+            배송비도 한 번만 나가니 따로 하실 일은 없어요.
           </p>
         </div>
 
         {heldOrders.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-zinc-200 py-10 text-center text-sm text-zinc-500">
-            보관중인 주문이 없어요.
+아직 구매하신 상품이 없어요.
           </p>
         ) : (
           <>
@@ -66,7 +66,7 @@ export default async function MyOrdersPage() {
                     <span className="text-xs text-zinc-400">
                       {formatDate(order.createdAt)} · 주문 #{order.id}
                     </span>
-                    <StatusChip status="보관중" />
+                    <StatusChip status="배송대기" />
                   </div>
                   {order.items.map((item) => (
                     <p key={item.id} className="text-sm text-zinc-700">
@@ -93,7 +93,7 @@ export default async function MyOrdersPage() {
             <div className="card flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-zinc-500">
-                  보관중 {heldOrders.length}건
+오늘 구매 {heldOrders.length}건
                 </span>
                 <span className="text-lg font-bold">{won(heldTotal)}</span>
               </div>
@@ -118,7 +118,7 @@ export default async function MyOrdersPage() {
             </div>
 
             <Link href="/my/settle" className="btn-primary">
-              정산하고 배송받기
+방송 전에 먼저 받기
             </Link>
           </>
         )}

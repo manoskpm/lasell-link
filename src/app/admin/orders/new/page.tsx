@@ -23,7 +23,7 @@ export default async function AdminNewOrderPage() {
         <h1 className="text-xl font-bold">대리주문</h1>
         <p className="mt-1 text-sm text-zinc-500">
           방송 댓글로 &quot;저요&quot; 하신 손님 주문을 대신 넣어드려요. 주문은
-          손님 보관함에 담기고, 배송지는 손님이 정산할 때 넣습니다.
+          손님 구매 내역에 들어가고, 방송종료 때 배송으로 함께 넘어갑니다.
         </p>
       </div>
 

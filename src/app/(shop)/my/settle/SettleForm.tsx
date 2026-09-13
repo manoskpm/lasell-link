@@ -85,7 +85,7 @@ export function SettleForm({
   return (
     <form action={formAction} className="flex flex-col gap-5">
       <section className="flex flex-col gap-2">
-        <p className="text-sm font-semibold">받을 주문 고르기</p>
+        <p className="text-sm font-semibold">먼저 받을 상품 고르기</p>
         {orders.map((order) => (
           <label
             key={order.id}
@@ -324,7 +324,7 @@ export function SettleForm({
         disabled={pending || selected.length === 0}
         className="btn-primary"
       >
-        {pending ? "정산 중..." : `${selected.length}건 정산하고 배송받기`}
+        {pending ? "신청 중..." : `${selected.length}건 지금 배송받기`}
       </button>
     </form>
   );

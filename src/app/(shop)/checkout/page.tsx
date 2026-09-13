@@ -28,8 +28,8 @@ export default async function CheckoutPage() {
       <div>
         <h1 className="text-xl font-bold">주문하기</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          주문한 상품은 <b>보관함</b>에 모여요. 받고 싶을 때 한 번에 정산하면
-          배송비도 한 번만 내요.
+          결제하시면 상품이 바로 확보돼요. 오늘 사신 것은 <b>방송이 끝나면
+          자동으로 한 번에 배송</b>되니, 따로 신청하실 필요 없어요.
         </p>
       </div>
 

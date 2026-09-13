@@ -123,7 +123,7 @@ export function ProxyOrderForm({
       )}
       {!state?.error && done > 0 && !pending && (
         <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          주문을 넣었어요. 손님 보관함에서 확인할 수 있어요.
+          주문을 넣었어요. 손님 구매 내역에서 확인할 수 있어요.
         </p>
       )}
 

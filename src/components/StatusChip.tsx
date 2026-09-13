@@ -3,6 +3,7 @@ const COLORS: Record<string, string> = {
   입금완료: "bg-emerald-100 text-emerald-700",
   환불완료: "bg-zinc-200 text-zinc-600",
   보관중: "bg-violet-100 text-violet-700",
+  배송대기: "bg-violet-100 text-violet-700",
   접수전: "bg-zinc-100 text-zinc-500",
   접수완료: "bg-blue-100 text-blue-700",
   발송완료: "bg-emerald-100 text-emerald-700",

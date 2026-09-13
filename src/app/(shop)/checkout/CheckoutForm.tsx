@@ -31,7 +31,7 @@ export function CheckoutForm() {
       )}
 
       <button type="submit" disabled={pending} className="btn-primary">
-        {pending ? "주문 중..." : "주문하고 보관함에 담기"}
+        {pending ? "결제 중..." : "결제하고 상품 확보하기"}
       </button>
     </form>
   );

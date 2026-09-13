@@ -36,7 +36,7 @@ export default async function AdminOrderDetailPage({
           ) : order.settlement ? (
             <StatusChip status={order.settlement.shippingStatus} />
           ) : (
-            <StatusChip status="보관중" />
+            <StatusChip status="배송대기" />
           )}
         </div>
         <p className="mt-0.5 text-xs text-zinc-400">
@@ -114,8 +114,8 @@ export default async function AdminOrderDetailPage({
           </>
         ) : (
           <p className="text-zinc-500">
-            아직 손님 보관함에 있어요. 손님이 정산(합배송)을 눌러 배송지를
-            넣으면 여기에 정산번호가 생기고, 그때 배송이 나갑니다.
+            아직 배송으로 넘어가지 않았어요. 라이브 화면에서 방송종료를 누르면
+            오늘 구매분이 손님별로 묶여 배송 대기로 넘어갑니다.
           </p>
         )}
       </section>

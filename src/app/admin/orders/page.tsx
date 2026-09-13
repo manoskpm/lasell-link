@@ -13,7 +13,7 @@ import { prisma } from "@/lib/prisma";
 
 const FILTERS = [
   { key: "all", label: "전체" },
-  { key: "held", label: "보관중" },
+  { key: "held", label: "배송대기" },
   { key: "settled", label: "정산완료" },
   { key: "canceled", label: "취소" },
 ];
@@ -266,7 +266,7 @@ export default async function AdminOrdersPage({
                         <StatusChip status={order.settlement.shippingStatus} />
                       </>
                     ) : (
-                      <StatusChip status="보관중" />
+                      <StatusChip status="배송대기" />
                     )}
                   </div>
                 </div>

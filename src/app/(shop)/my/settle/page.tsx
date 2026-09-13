@@ -41,9 +41,9 @@ export default async function SettlePage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold">정산하고 배송받기</h1>
+        <h1 className="text-xl font-bold">먼저 배송받기</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          받을 주문을 고르면 배송비가 한 번만 계산돼요.
+          방송이 끝나면 자동으로 배송되지만, 먼저 받고 싶으시면 여기서 신청하세요.
         </p>
       </div>
 

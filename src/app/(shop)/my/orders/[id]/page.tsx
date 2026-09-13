@@ -37,7 +37,7 @@ export default async function MyOrderDetailPage({
             ? "취소된 주문이에요"
             : order.settlement
               ? "정산 완료된 주문이에요"
-              : "보관함에 담긴 주문이에요"}
+              : "방송종료 때 배송으로 넘어가요"}
         </p>
         <h1 className="mt-1 text-xl font-bold">주문 #{order.id}</h1>
         <p className="mt-0.5 text-xs text-zinc-400">
@@ -54,7 +54,7 @@ export default async function MyOrderDetailPage({
             <StatusChip status={order.settlement.shippingStatus} />
           </>
         ) : (
-          <StatusChip status="보관중" />
+          <StatusChip status="배송대기" />
         )}
       </div>
 
@@ -106,7 +106,7 @@ export default async function MyOrderDetailPage({
               한 번만 내요.
             </p>
             <Link href="/my/settle" className="btn-primary">
-              정산하고 배송받기
+              먼저 배송받기
             </Link>
           </>
         )

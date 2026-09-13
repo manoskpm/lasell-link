@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { cancelSettlementAction } from "@/app/actions/orders";
 
-/// 정산(배송묶음) 취소. 묶인 주문들은 다시 손님 보관함으로 돌아감
+/// 배송묶음(정산) 취소. 묶인 주문들은 다시 배송대기로 돌아감
 export function CancelOrderButton({
   settlementId,
   canceled,
@@ -21,7 +21,7 @@ export function CancelOrderButton({
   if (canceled) {
     return (
       <p className="py-3 text-center text-sm text-zinc-400">
-        취소된 정산이에요. 묶여 있던 주문은 손님 보관함으로 돌아갔어요.
+        취소된 정산이에요. 묶여 있던 주문은 배송대기로 돌아갔어요.
       </p>
     );
   }
@@ -42,7 +42,7 @@ export function CancelOrderButton({
     <div className="flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5">
       <p className="text-sm font-semibold text-red-700">정산 취소</p>
       <p className="text-xs text-red-600">
-        취소하면 묶여 있던 주문들이 손님 보관함으로 돌아가요. 상품 재고는
+        취소하면 묶여 있던 주문들이 배송대기로 돌아가요. 상품 재고는
         그대로 유지돼요.
       </p>
       <input
