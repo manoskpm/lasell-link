@@ -52,8 +52,21 @@ export default async function AdminLivePage() {
   const courierCost = buyers * settings.courierCost;
   const profit = sales - cost - courierCost;
 
+  // 사장님이 '쇼핑몰 보기'로 자기 화면을 열어둔 것은 손님으로 세지 않음
+  const adminIds = (
+    await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { id: true },
+    })
+  ).map((admin) => admin.id);
+
   const viewers = await prisma.presence.count({
-    where: { lastSeenAt: { gte: new Date(Date.now() - ACTIVE_WINDOW_MS) } },
+    where: {
+      lastSeenAt: { gte: new Date(Date.now() - ACTIVE_WINDOW_MS) },
+      ...(adminIds.length > 0
+        ? { OR: [{ userId: null }, { userId: { notIn: adminIds } }] }
+        : {}),
+    },
   });
 
   const closesAt = settings.saleClosesAt
