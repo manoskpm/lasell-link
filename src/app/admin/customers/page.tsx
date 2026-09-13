@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { FollowToggle } from "@/components/FollowToggle";
 import { formatDate } from "@/lib/format";
 import { won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -5,23 +7,31 @@ import { prisma } from "@/lib/prisma";
 export default async function AdminCustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; follow?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, follow } = await searchParams;
   const keyword = q?.trim();
+  const followOnly = follow === "1";
 
   const customers = await prisma.user.findMany({
-    where: keyword
-      ? {
-          OR: [
-            { name: { contains: keyword } },
-            { loginId: { contains: keyword } },
-            { phone: { contains: keyword } },
-          ],
-        }
-      : {},
+    where: {
+      ...(keyword
+        ? {
+            OR: [
+              { name: { contains: keyword } },
+              { loginId: { contains: keyword } },
+              { phone: { contains: keyword } },
+            ],
+          }
+        : {}),
+      ...(followOnly ? { followedAt: { not: null } } : {}),
+    },
     include: { orders: { include: { items: true } } },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ followedAt: "desc" }, { createdAt: "desc" }],
+  });
+
+  const followedCount = await prisma.user.count({
+    where: { followedAt: { not: null } },
   });
 
   return (
@@ -42,7 +52,23 @@ export default async function AdminCustomersPage({
         </a>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href={keyword ? `/admin/customers?q=${keyword}` : "/admin/customers"}
+          className={`chip ${!followOnly ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600"}`}
+        >
+          전체
+        </Link>
+        <Link
+          href={`/admin/customers?follow=1${keyword ? `&q=${keyword}` : ""}`}
+          className={`chip ${followOnly ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600"}`}
+        >
+          ⭐ 단골만 ({followedCount})
+        </Link>
+      </div>
+
       <form method="get" className="flex gap-2">
+        {followOnly && <input type="hidden" name="follow" value="1" />}
         <input
           name="q"
           defaultValue={keyword ?? ""}
@@ -71,6 +97,7 @@ export default async function AdminCustomersPage({
               <th className="px-4 py-3">가입일</th>
               <th className="px-4 py-3 text-right">주문</th>
               <th className="px-4 py-3 text-right">누적구매액</th>
+              <th className="px-4 py-3">단골</th>
             </tr>
           </thead>
           <tbody>
@@ -111,6 +138,14 @@ export default async function AdminCustomersPage({
                   <td className="px-4 py-3 text-right font-semibold">
                     {won(totalSpent)}
                   </td>
+                  <td className="px-4 py-3">
+                    {customer.role !== "ADMIN" && (
+                      <FollowToggle
+                        userId={customer.id}
+                        followed={Boolean(customer.followedAt)}
+                      />
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -129,14 +164,15 @@ export default async function AdminCustomersPage({
           );
           return (
             <div key={customer.id} className="card flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold">
+              <div className="flex items-center justify-between gap-2">
+                <p className="min-w-0 truncate text-sm font-semibold">
+                  {customer.followedAt && "⭐ "}
                   {customer.name}
                   <span className="ml-1 font-normal text-zinc-400">
                     {customer.loginId}
                   </span>
                 </p>
-                <span className="text-xs text-zinc-400">
+                <span className="shrink-0 text-xs text-zinc-400">
                   {customer.orders.length}건 · {won(totalSpent)}
                 </span>
               </div>
@@ -145,9 +181,17 @@ export default async function AdminCustomersPage({
                 {customer.zipcode ? `[${customer.zipcode}] ` : ""}
                 {customer.address ?? "-"} {customer.addressDetail ?? ""}
               </p>
-              <p className="text-xs text-zinc-400">
-                가입 {formatDate(customer.createdAt)}
-              </p>
+              <div className="mt-1 flex items-center justify-between">
+                <p className="text-xs text-zinc-400">
+                  가입 {formatDate(customer.createdAt)}
+                </p>
+                {customer.role !== "ADMIN" && (
+                  <FollowToggle
+                    userId={customer.id}
+                    followed={Boolean(customer.followedAt)}
+                  />
+                )}
+              </div>
             </div>
           );
         })}

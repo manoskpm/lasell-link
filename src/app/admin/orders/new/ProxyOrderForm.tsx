@@ -4,7 +4,13 @@ import { useActionState, useState } from "react";
 import { createOrderForCustomerAction } from "@/app/actions/orders";
 import { optionLabel } from "@/lib/format";
 
-type Customer = { id: number; name: string; phone: string; loginId: string };
+type Customer = {
+  id: number;
+  name: string;
+  phone: string;
+  loginId: string;
+  followed: boolean;
+};
 type Product = {
   id: number;
   name: string;
@@ -45,6 +51,7 @@ export function ProxyOrderForm({
           <option value="">선택해주세요</option>
           {customers.map((customer) => (
             <option key={customer.id} value={customer.id}>
+              {customer.followed ? "⭐ " : ""}
               {customer.name} ({customer.loginId}) · {customer.phone}
             </option>
           ))}

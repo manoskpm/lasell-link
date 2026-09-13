@@ -38,6 +38,7 @@ export default async function AdminNewOrderPage() {
             name: customer.name,
             phone: customer.phone,
             loginId: customer.loginId,
+            followed: Boolean(customer.followedAt),
           }))}
           products={products.map((product) => ({
             id: product.id,
