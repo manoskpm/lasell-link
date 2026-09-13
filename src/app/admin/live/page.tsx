@@ -50,7 +50,17 @@ export default async function AdminLivePage() {
     todayOrders.map((order) => order.userId ?? `guest:${order.buyerPhone}`)
   ).size;
   const courierCost = buyers * settings.courierCost;
-  const profit = sales - cost - courierCost;
+
+  // 오늘 배송으로 넘어간 건에 적용된 쿠폰 할인 (방송 중엔 아직 0)
+  const todaySettlements = await prisma.settlement.aggregate({
+    where: { canceledAt: null, createdAt: kstRangeToUtc(today, today) },
+    _sum: { discount: true, shippingCredit: true },
+  });
+  const couponDiscount =
+    (todaySettlements._sum.discount ?? 0) +
+    (todaySettlements._sum.shippingCredit ?? 0);
+
+  const profit = sales - cost - courierCost - couponDiscount;
 
   // 사장님이 '쇼핑몰 보기'로 자기 화면을 열어둔 것은 손님으로 세지 않음
   const adminIds = (
@@ -122,7 +132,11 @@ export default async function AdminLivePage() {
         <Stat
           label="예상 순익"
           value={won(profit)}
-          hint={`원가 ${won(cost)} · 택배 ${won(courierCost)} 뺀 금액`}
+          hint={
+            couponDiscount > 0
+              ? `원가 ${won(cost)} · 택배 ${won(courierCost)} · 할인 ${won(couponDiscount)} 뺀 금액`
+              : `원가 ${won(cost)} · 택배 ${won(courierCost)} 뺀 금액`
+          }
           accent
         />
       </section>

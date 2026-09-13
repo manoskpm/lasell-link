@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { planShipping } from "@/lib/shippingPlan";
+import { applyCoupon } from "@/lib/coupon";
 
 export type CloseBroadcastResult = {
   closedProducts: number;
@@ -86,7 +87,7 @@ export async function closeBroadcastAction(): Promise<CloseBroadcastResult> {
       settlementId: null,
       userId: { not: null },
     },
-    include: { items: true, user: true },
+    include: { items: true, user: { include: { pendingCoupon: true } } },
     orderBy: { createdAt: "asc" },
   });
 
@@ -128,6 +129,18 @@ export async function closeBroadcastAction(): Promise<CloseBroadcastResult> {
         freeShippingOver: settings.freeShippingOver,
       });
 
+      // 손님이 미리 골라둔 쿠폰이 있으면 여기서 적용
+      const itemsTotal = customerOrders.reduce(
+        (sum, order) =>
+          sum + order.items.reduce((s, i) => s + i.price * i.quantity, 0),
+        0
+      );
+      const applied = applyCoupon({
+        coupon: user.pendingCoupon,
+        itemsTotal,
+        shippingFee: plan.fee,
+      });
+
       const created = await tx.settlement.create({
         data: {
           userId,
@@ -138,10 +151,23 @@ export async function closeBroadcastAction(): Promise<CloseBroadcastResult> {
           address: user.address ?? "",
           addressDetail: user.addressDetail,
           paymentMethod: "계좌이체",
-          shippingFee: plan.fee,
+          shippingFee: applied.shippingFee,
           shippingCredit: plan.credit,
+          discount: applied.discount,
+          couponId:
+            applied.discount > 0 || applied.shippingFee !== plan.fee
+              ? user.pendingCouponId
+              : null,
         },
       });
+
+      // 쓴 쿠폰은 비워서 다음 배송에 또 붙지 않게 함
+      if (user.pendingCouponId) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { pendingCouponId: null },
+        });
+      }
 
       await tx.order.updateMany({
         where: { id: { in: orderIds } },

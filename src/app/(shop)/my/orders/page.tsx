@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { CouponPicker } from "@/components/CouponPicker";
 import { StatusChip } from "@/components/StatusChip";
 import { requireUser } from "@/lib/auth";
 import { formatDate, optionLabel, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { isCouponUsable } from "@/lib/coupon";
 import { getSettings } from "@/lib/settings";
 import { planShipping } from "@/lib/shippingPlan";
 
@@ -22,6 +24,11 @@ export default async function MyOrdersPage() {
     }),
     getSettings(),
   ]);
+
+  const coupons = await prisma.coupon.findMany({
+    where: { isActive: true },
+    orderBy: { createdAt: "desc" },
+  });
 
   const heldTotal = heldOrders.reduce(
     (sum, order) =>
@@ -116,6 +123,19 @@ export default async function MyOrdersPage() {
                 </p>
               )}
             </div>
+
+            <CouponPicker
+              coupons={coupons
+                .filter((coupon) => isCouponUsable(coupon, heldTotal))
+                .map((coupon) => ({
+                  id: coupon.id,
+                  name: coupon.name,
+                  type: coupon.type,
+                  value: coupon.value,
+                  minAmount: coupon.minAmount,
+                }))}
+              selectedId={user.pendingCouponId}
+            />
 
             <Link
               href="/my/settle"

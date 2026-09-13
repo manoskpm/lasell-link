@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { FormState } from "./auth";
 
@@ -62,5 +62,28 @@ export async function deleteCouponAction(couponId: number) {
 
   await prisma.coupon.delete({ where: { id: couponId } });
   revalidatePath("/admin/coupons");
+  return { ok: true };
+}
+
+/// 손님이 다음 배송에 쓸 쿠폰을 미리 골라둠 (0이면 사용 안 함)
+export async function choosePendingCouponAction(couponId: number) {
+  const user = await requireUser();
+
+  if (couponId > 0) {
+    const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });
+    if (!coupon || !coupon.isActive) {
+      return { error: "지금은 쓸 수 없는 쿠폰이에요." };
+    }
+    if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+      return { error: "사용기한이 지난 쿠폰이에요." };
+    }
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { pendingCouponId: couponId > 0 ? couponId : null },
+  });
+
+  revalidatePath("/my/orders");
   return { ok: true };
 }

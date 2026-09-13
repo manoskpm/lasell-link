@@ -72,9 +72,13 @@ model User {
   address       String?
   addressDetail String?
   role          String    @default("CUSTOMER") // CUSTOMER | ADMIN
+  /// 다음 배송에 쓰겠다고 골라둔 쿠폰. 배송으로 넘어갈 때 적용되고 비워짐
+  pendingCouponId Int?
   followedAt    DateTime? // 단골 등록일. null이면 단골 아님
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  pendingCoupon Coupon?  @relation("PendingCoupon", fields: [pendingCouponId], references: [id], onDelete: SetNull)
 
   sessions    Session[]
   cartItems   CartItem[]
@@ -219,6 +223,7 @@ model Coupon {
   updatedAt DateTime  @updatedAt
 
   settlements Settlement[]
+  pendingUsers User[]     @relation("PendingCoupon")
 }
 
 /// 주문 당시 상품 정보를 스냅샷으로 보관 (상품이 수정/삭제돼도 주문 내역 유지)
