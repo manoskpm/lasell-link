@@ -6,15 +6,15 @@ import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminShippingPage() {
-  const [templates, orders] = await Promise.all([
+  const [templates, settlements] = await Promise.all([
     prisma.courierTemplate.findMany({ orderBy: [{ isDefault: "desc" }, { id: "asc" }] }),
-    prisma.order.findMany({
+    prisma.settlement.findMany({
       where: {
         paymentStatus: "입금완료",
         shippingStatus: { not: "발송완료" },
         canceledAt: null,
       },
-      include: { items: true },
+      include: { orders: { include: { items: true } } },
       orderBy: { createdAt: "asc" },
     }),
   ]);
@@ -78,16 +78,17 @@ export default async function AdminShippingPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold">
-          접수할 주문 ({orders.length}건)
+          접수할 정산 ({settlements.length}건)
         </h2>
         <p className="text-xs text-zinc-500">
-          입금완료된 주문만 나와요. 체크된 주문이 엑셀로 만들어지고, 내려받으면
-          배송상태가 &apos;접수완료&apos;로 바뀌어요.
+          입금완료된 정산(합배송 묶음)만 나와요. 한 손님이 여러 번 산 상품은
+          정산 한 건 = 송장 한 장으로 묶여 나갑니다. 내려받으면 배송상태가
+          &apos;접수완료&apos;로 바뀌어요.
         </p>
 
-        {orders.length === 0 ? (
+        {settlements.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-zinc-200 py-10 text-center text-sm text-zinc-500">
-            접수할 주문이 없어요.
+            접수할 정산 건이 없어요.
           </p>
         ) : (
           <form
@@ -119,41 +120,44 @@ export default async function AdminShippingPage() {
             )}
 
             <div className="flex flex-col gap-2">
-              {orders.map((order) => (
+              {settlements.map((settlement) => (
                 <label
-                  key={order.id}
+                  key={settlement.id}
                   className="flex items-start gap-3 rounded-xl border border-zinc-200 px-3.5 py-3"
                 >
                   <input
                     type="checkbox"
-                    name="orderIds"
-                    value={order.id}
+                    name="settlementIds"
+                    value={settlement.id}
                     defaultChecked
                     className="mt-1 h-5 w-5 shrink-0"
                   />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium">
-                        #{order.id} {order.buyerName}
+                        정산 #{settlement.id} {settlement.buyerName}
                       </span>
-                      <StatusChip status={order.shippingStatus} />
+                      <StatusChip status={settlement.shippingStatus} />
                     </span>
                     <span className="mt-0.5 block text-xs text-zinc-500">
-                      {order.buyerPhone} · {formatDate(order.createdAt)}
+                      {settlement.buyerPhone} · {formatDate(settlement.createdAt)}{" "}
+                      · 주문 {settlement.orders.length}건
                     </span>
                     <span className="mt-0.5 block text-xs text-zinc-500">
-                      {order.zipcode ? `[${order.zipcode}] ` : ""}
-                      {order.address} {order.addressDetail ?? ""}
+                      {settlement.zipcode ? `[${settlement.zipcode}] ` : ""}
+                      {settlement.address} {settlement.addressDetail ?? ""}
                     </span>
                     <span className="mt-1 block border-t border-zinc-100 pt-1">
-                      {order.items.map((item) => (
-                        <span
-                          key={item.id}
-                          className="block text-xs font-medium text-zinc-700"
-                        >
-                          {itemLine(item)}
-                        </span>
-                      ))}
+                      {settlement.orders.flatMap((order) =>
+                        order.items.map((item) => (
+                          <span
+                            key={item.id}
+                            className="block text-xs font-medium text-zinc-700"
+                          >
+                            {itemLine(item)}
+                          </span>
+                        ))
+                      )}
                     </span>
                   </span>
                 </label>
@@ -165,7 +169,7 @@ export default async function AdminShippingPage() {
               disabled={templates.length === 0}
               className="btn-primary"
             >
-              선택한 주문 엑셀로 내려받기
+              선택한 정산 엑셀로 내려받기
             </button>
             {templates.length === 0 && (
               <p className="text-center text-xs text-zinc-500">
@@ -179,7 +183,7 @@ export default async function AdminShippingPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold">운송장번호 받아오기</h2>
         <p className="text-xs text-zinc-500">
-          택배사에 접수하고 받은 엑셀(운송장번호가 채워진 파일)을 올리면, 주문에
+          택배사에 접수하고 받은 엑셀(운송장번호가 채워진 파일)을 올리면, 정산 건에
           운송장번호가 저장되고 배송상태가 &apos;발송완료&apos;로 바뀌어요.
         </p>
         <TrackingImportForm />

@@ -4,8 +4,6 @@ import { StatusChip } from "@/components/StatusChip";
 import { requireUser } from "@/lib/auth";
 import { formatDate, optionLabel, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
-import { buildTrackingUrl } from "@/lib/tracking";
 
 export default async function MyOrderDetailPage({
   params,
@@ -15,23 +13,16 @@ export default async function MyOrderDetailPage({
   const { id } = await params;
   const user = await requireUser("/login");
 
-  const [order, settings] = await Promise.all([
-    prisma.order.findUnique({
-      where: { id: Number(id) },
-      include: { items: true },
-    }),
-    getSettings(),
-  ]);
+  const order = await prisma.order.findUnique({
+    where: { id: Number(id) },
+    include: { items: true, settlement: true },
+  });
 
   if (!order || order.userId !== user.id) notFound();
 
   const total = order.items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
-  );
-  const trackingUrl = buildTrackingUrl(
-    settings.trackingUrlTemplate,
-    order.trackingNumber
   );
 
   return (
@@ -42,7 +33,11 @@ export default async function MyOrderDetailPage({
             order.canceledAt ? "text-red-500" : "text-emerald-600"
           }`}
         >
-          {order.canceledAt ? "취소된 주문이에요" : "주문이 접수됐어요"}
+          {order.canceledAt
+            ? "취소된 주문이에요"
+            : order.settlement
+              ? "정산 완료된 주문이에요"
+              : "보관함에 담긴 주문이에요"}
         </p>
         <h1 className="mt-1 text-xl font-bold">주문 #{order.id}</h1>
         <p className="mt-0.5 text-xs text-zinc-400">
@@ -51,9 +46,16 @@ export default async function MyOrderDetailPage({
       </div>
 
       <div className="flex gap-1.5">
-        {order.canceledAt && <StatusChip status="취소됨" />}
-        <StatusChip status={order.paymentStatus} />
-        {!order.canceledAt && <StatusChip status={order.shippingStatus} />}
+        {order.canceledAt ? (
+          <StatusChip status="취소됨" />
+        ) : order.settlement ? (
+          <>
+            <StatusChip status={order.settlement.paymentStatus} />
+            <StatusChip status={order.settlement.shippingStatus} />
+          </>
+        ) : (
+          <StatusChip status="보관중" />
+        )}
       </div>
 
       {order.canceledAt && order.cancelReason && (
@@ -77,69 +79,41 @@ export default async function MyOrderDetailPage({
             </span>
           </div>
         ))}
-        <div className="mt-1 flex justify-between border-t border-zinc-100 pt-2 text-sm">
-          <span className="text-zinc-500">상품금액</span>
+        <div className="mt-1 flex justify-between border-t border-zinc-100 pt-2 font-bold">
+          <span>상품금액</span>
           <span>{won(total)}</span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-zinc-500">배송비</span>
-          <span>
-            {order.shippingFee === 0 ? "무료" : won(order.shippingFee)}
-          </span>
-        </div>
-        <div className="flex justify-between border-t border-zinc-100 pt-2 font-bold">
-          <span>총 결제금액</span>
-          <span>{won(total + order.shippingFee)}</span>
-        </div>
       </section>
 
-      <section className="card flex flex-col gap-1 text-sm">
-        <p className="font-semibold">배송지</p>
-        <p className="text-zinc-600">
-          {order.buyerName} · {order.buyerPhone}
+      {order.memo && (
+        <p className="rounded-xl bg-zinc-50 px-3.5 py-3 text-sm text-zinc-600">
+          요청: {order.memo}
         </p>
-        <p className="text-zinc-600">
-          {order.zipcode ? `[${order.zipcode}] ` : ""}
-          {order.address} {order.addressDetail ?? ""}
-        </p>
-        {order.memo && <p className="text-zinc-500">요청: {order.memo}</p>}
-        {order.depositorName && (
-          <p className="mt-1 text-zinc-500">
-            입금자명: {order.depositorName}
-          </p>
-        )}
-      </section>
+      )}
 
-      {order.trackingNumber && (
-        <section className="card flex flex-col gap-2 text-sm">
-          <p className="font-semibold">배송 정보</p>
-          <p className="text-zinc-600">
-            {settings.courierName ?? "택배"} · 운송장번호{" "}
-            <b className="text-zinc-900">{order.trackingNumber}</b>
-          </p>
-          {trackingUrl && (
-            <Link
-              href={trackingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary"
-            >
-              배송조회 하기
+      {order.settlement ? (
+        <Link
+          href={`/my/settlements/${order.settlement.id}`}
+          className="btn-primary"
+        >
+          정산 #{order.settlement.id} 배송정보 보기
+        </Link>
+      ) : (
+        !order.canceledAt && (
+          <>
+            <p className="rounded-xl bg-zinc-50 px-3.5 py-3 text-sm text-zinc-600">
+              이 주문은 아직 보관중이에요. 다른 주문과 모아서 정산하면 배송비를
+              한 번만 내요.
+            </p>
+            <Link href="/my/settle" className="btn-primary">
+              정산하고 배송받기
             </Link>
-          )}
-        </section>
+          </>
+        )
       )}
 
-      {order.paymentStatus === "미입금" && settings.bankAccount && (
-        <p className="rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-700">
-          입금계좌: <b>{settings.bankAccount}</b>
-          <br />
-          입금 확인 후 발송해드려요.
-        </p>
-      )}
-
-      <Link href="/" className="btn-secondary">
-        계속 쇼핑하기
+      <Link href="/my/orders" className="btn-secondary">
+        주문내역으로
       </Link>
     </div>
   );

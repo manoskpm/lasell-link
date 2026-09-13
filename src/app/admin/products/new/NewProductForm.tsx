@@ -61,6 +61,20 @@ export function NewProductForm() {
           />
         </div>
         <div>
+          <label className="label" htmlFor="limitPerPerson">
+            1인당 구매제한
+          </label>
+          <input
+            id="limitPerPerson"
+            name="limitPerPerson"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            className="input"
+            placeholder="비우면 제한 없음"
+          />
+        </div>
+        <div>
           <label className="label" htmlFor="cost">
             원가
           </label>
@@ -204,6 +218,22 @@ export function NewProductForm() {
           {state.error}
         </p>
       )}
+
+
+      <label className="flex items-center gap-3 rounded-xl border border-zinc-200 px-3.5 py-3">
+        <input
+          type="checkbox"
+          name="openNow"
+          className="h-5 w-5"
+        />
+        <span className="text-sm">
+          <b>지금 바로 오픈</b>
+          <span className="block text-xs text-zinc-500">
+            체크하지 않으면 손님 화면에 안 보이고, 라이브 오픈 콘솔에서
+            &apos;오픈&apos;을 눌렀을 때 공개돼요.
+          </span>
+        </span>
+      </label>
 
       <button type="submit" disabled={pending} className="btn-primary">
         {pending ? "등록 중..." : "상품 등록하기"}

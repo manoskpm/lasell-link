@@ -8,13 +8,13 @@ import { buildTrackingUrl } from "@/lib/tracking";
 
 /// 주문 목록 옆에서 운송장번호를 넣고 바로 발송완료 처리하는 버튼
 export function ShipRow({
-  orderId,
+  settlementId,
   trackingNumber,
   shippingStatus,
   trackingUrlTemplate,
   courierName,
 }: {
-  orderId: number;
+  settlementId: number;
   trackingNumber: string | null;
   shippingStatus: string;
   trackingUrlTemplate: string | null;
@@ -31,7 +31,7 @@ export function ShipRow({
   function submit() {
     setError(null);
     startTransition(async () => {
-      const result = await markShippedAction(orderId, value);
+      const result = await markShippedAction(settlementId, value);
       if (result?.error) {
         setError(result.error);
         return;

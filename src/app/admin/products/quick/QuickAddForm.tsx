@@ -87,6 +87,20 @@ export function QuickAddForm() {
           />
         </div>
         <div>
+          <label className="label" htmlFor="limitPerPerson">
+            1인당 구매제한
+          </label>
+          <input
+            id="limitPerPerson"
+            name="limitPerPerson"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            className="input"
+            placeholder="비우면 제한 없음"
+          />
+        </div>
+        <div>
           <label className="label" htmlFor="stock">
             재고
           </label>

@@ -1,22 +1,17 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { optionLabel, won } from "@/lib/format";
-import { prisma } from "@/lib/prisma";
 import { sellingPrice } from "@/lib/price";
-import { getSettings } from "@/lib/settings";
-import { calcShippingFee } from "@/lib/shipping";
+import { prisma } from "@/lib/prisma";
 import { CheckoutForm } from "./CheckoutForm";
 
 export default async function CheckoutPage() {
   const user = await requireUser("/login");
-  const [items, settings] = await Promise.all([
-    prisma.cartItem.findMany({
-      where: { userId: user.id },
-      include: { variant: { include: { product: true } } },
-      orderBy: { createdAt: "asc" },
-    }),
-    getSettings(),
-  ]);
+  const items = await prisma.cartItem.findMany({
+    where: { userId: user.id },
+    include: { variant: { include: { product: true } } },
+    orderBy: { createdAt: "asc" },
+  });
 
   if (items.length === 0) redirect("/cart");
 
@@ -27,15 +22,16 @@ export default async function CheckoutPage() {
         item.quantity,
     0
   );
-  const shippingFee = calcShippingFee({
-    itemsTotal: total,
-    shippingFee: settings.shippingFee,
-    freeShippingOver: settings.freeShippingOver,
-  });
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-xl font-bold">주문하기</h1>
+      <div>
+        <h1 className="text-xl font-bold">주문하기</h1>
+        <p className="mt-1 text-sm text-zinc-500">
+          주문한 상품은 <b>보관함</b>에 모여요. 받고 싶을 때 한 번에 정산하면
+          배송비도 한 번만 내요.
+        </p>
+      </div>
 
       <section className="card flex flex-col gap-2">
         <p className="text-sm font-semibold">주문 상품</p>
@@ -57,30 +53,16 @@ export default async function CheckoutPage() {
             </span>
           </div>
         ))}
-        <div className="mt-1 flex justify-between border-t border-zinc-100 pt-2 text-sm">
-          <span className="text-zinc-500">상품금액</span>
+        <div className="mt-1 flex justify-between border-t border-zinc-100 pt-2 font-bold">
+          <span>상품금액</span>
           <span>{won(total)}</span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-zinc-500">배송비</span>
-          <span>{shippingFee === 0 ? "무료" : won(shippingFee)}</span>
-        </div>
-        <div className="flex justify-between border-t border-zinc-100 pt-2 font-bold">
-          <span>총 결제금액</span>
-          <span>{won(total + shippingFee)}</span>
-        </div>
+        <p className="text-xs text-zinc-500">
+          배송비는 정산할 때 계산돼요.
+        </p>
       </section>
 
-      <CheckoutForm
-        defaults={{
-          buyerName: user.name,
-          buyerPhone: user.phone,
-          zipcode: user.zipcode ?? "",
-          address: user.address ?? "",
-          addressDetail: user.addressDetail ?? "",
-        }}
-        bankAccount={settings.bankAccount}
-      />
+      <CheckoutForm />
     </div>
   );
 }

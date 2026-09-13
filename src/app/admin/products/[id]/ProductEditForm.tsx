@@ -19,6 +19,7 @@ export function ProductEditForm({
     category: string;
     description: string | null;
     imageUrl: string | null;
+    limitPerPerson: number;
   };
 }) {
   const [state, formAction, pending] = useActionState(
@@ -135,6 +136,21 @@ export function ProductEditForm({
       </p>
 
       <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label" htmlFor="limitPerPerson">
+            1인당 구매제한
+          </label>
+          <input
+            id="limitPerPerson"
+            name="limitPerPerson"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            className="input"
+            defaultValue={product.limitPerPerson || ""}
+            placeholder="비우면 제한 없음"
+          />
+        </div>
         <div>
           <label className="label" htmlFor="cost">
             원가 (정산용)

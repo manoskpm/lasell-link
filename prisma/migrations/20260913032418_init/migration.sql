@@ -9,6 +9,8 @@ CREATE TABLE "Setting" (
     "chatUrl" TEXT,
     "bankAccount" TEXT,
     "noticeText" TEXT,
+    "shippingFee" INTEGER NOT NULL DEFAULT 3000,
+    "freeShippingOver" INTEGER NOT NULL DEFAULT 0,
     "senderZipcode" TEXT,
     "senderAddress" TEXT,
     "senderAddressDetail" TEXT,
@@ -45,6 +47,7 @@ CREATE TABLE "User" (
     "address" TEXT,
     "addressDetail" TEXT,
     "role" TEXT NOT NULL DEFAULT 'CUSTOMER',
+    "followedAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -63,6 +66,7 @@ CREATE TABLE "Product" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "price" INTEGER NOT NULL,
+    "salePrice" INTEGER,
     "cost" INTEGER NOT NULL DEFAULT 0,
     "category" TEXT NOT NULL DEFAULT '의류',
     "description" TEXT,
@@ -98,8 +102,25 @@ CREATE TABLE "CartItem" (
 CREATE TABLE "Order" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "userId" INTEGER,
+    "settlementId" INTEGER,
     "buyerName" TEXT NOT NULL,
     "buyerPhone" TEXT NOT NULL,
+    "memo" TEXT,
+    "canceledAt" DATETIME,
+    "cancelReason" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Order_settlementId_fkey" FOREIGN KEY ("settlementId") REFERENCES "Settlement" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Settlement" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "userId" INTEGER,
+    "buyerName" TEXT NOT NULL,
+    "buyerPhone" TEXT NOT NULL,
+    "depositorName" TEXT,
     "zipcode" TEXT,
     "address" TEXT NOT NULL,
     "addressDetail" TEXT,
@@ -109,9 +130,27 @@ CREATE TABLE "Order" (
     "shippingStatus" TEXT NOT NULL DEFAULT '접수전',
     "trackingNumber" TEXT,
     "shippingFee" INTEGER NOT NULL DEFAULT 0,
+    "discount" INTEGER NOT NULL DEFAULT 0,
+    "couponId" INTEGER,
+    "canceledAt" DATETIME,
+    "cancelReason" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "Settlement_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Settlement_couponId_fkey" FOREIGN KEY ("couponId") REFERENCES "Coupon" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Coupon" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'AMOUNT',
+    "value" INTEGER NOT NULL DEFAULT 0,
+    "minAmount" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "expiresAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
 );
 
 -- CreateTable

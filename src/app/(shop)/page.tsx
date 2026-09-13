@@ -19,10 +19,11 @@ export default async function ShopHomePage({
     prisma.product.findMany({
       where: {
         isActive: true,
+        isOpen: true, // 방송에서 오픈한 상품만 손님 화면에 보임
         ...(selected === "전체" ? {} : { category: selected }),
       },
       include: { variants: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ openedAt: "desc" }, { createdAt: "desc" }],
     }),
     getSettings(),
   ]);
@@ -53,7 +54,7 @@ export default async function ShopHomePage({
 
       {products.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-zinc-200 py-16 text-center text-sm text-zinc-500">
-          아직 등록된 상품이 없어요.
+          아직 오픈된 상품이 없어요. 방송에서 상품이 오픈되면 여기에 떠요.
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3">
@@ -82,6 +83,13 @@ export default async function ShopHomePage({
                       이미지 준비중
                     </div>
                   )}
+                  {product.openedAt &&
+                    Date.now() - product.openedAt.getTime() < 10 * 60 * 1000 &&
+                    totalStock > 0 && (
+                      <span className="absolute left-2 top-2 rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                        방금 오픈
+                      </span>
+                    )}
                   {totalStock === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-sm font-semibold text-white">
                       품절

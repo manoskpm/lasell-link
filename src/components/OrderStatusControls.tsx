@@ -11,11 +11,11 @@ const PAYMENT_OPTIONS = ["미입금", "입금완료"];
 const SHIPPING_OPTIONS = ["접수전", "접수완료", "발송완료"];
 
 export function OrderStatusControls({
-  orderId,
+  settlementId,
   paymentStatus,
   shippingStatus,
 }: {
-  orderId: number;
+  settlementId: number;
   paymentStatus: string;
   shippingStatus: string;
 }) {
@@ -39,7 +39,7 @@ export function OrderStatusControls({
               key={option}
               type="button"
               onClick={() =>
-                update(() => updatePaymentStatusAction(orderId, option))
+                update(() => updatePaymentStatusAction(settlementId, option))
               }
               className={`flex-1 rounded-xl border px-3 py-3 text-sm font-medium ${
                 paymentStatus === option
@@ -61,7 +61,7 @@ export function OrderStatusControls({
               key={option}
               type="button"
               onClick={() =>
-                update(() => updateShippingStatusAction(orderId, option))
+                update(() => updateShippingStatusAction(settlementId, option))
               }
               className={`flex-1 rounded-xl border px-3 py-3 text-sm font-medium ${
                 shippingStatus === option

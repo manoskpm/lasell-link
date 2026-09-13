@@ -16,7 +16,7 @@ export default async function ProductDetailPage({
     include: { variants: { orderBy: { id: "asc" } } },
   });
 
-  if (!product || !product.isActive) notFound();
+  if (!product || !product.isActive || !product.isOpen) notFound();
 
   return (
     <div className="-mx-4 -my-4 flex flex-col">
@@ -61,6 +61,12 @@ export default async function ProductDetailPage({
             <p className="mt-1 text-2xl font-bold">{won(product.price)}</p>
           )}
         </div>
+
+        {product.limitPerPerson > 0 && (
+          <p className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700">
+            1인당 {product.limitPerPerson}개까지만 구매할 수 있어요.
+          </p>
+        )}
 
         {product.description && (
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600">

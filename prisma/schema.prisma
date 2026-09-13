@@ -64,13 +64,15 @@ model User {
   zipcode       String?
   address       String?
   addressDetail String?
-  role          String   @default("CUSTOMER") // CUSTOMER | ADMIN
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  role          String    @default("CUSTOMER") // CUSTOMER | ADMIN
+  followedAt    DateTime? // 단골 등록일. null이면 단골 아님
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  sessions  Session[]
-  cartItems CartItem[]
-  orders    Order[]
+  sessions    Session[]
+  cartItems   CartItem[]
+  orders      Order[]
+  settlements Settlement[]
 }
 
 model Session {
@@ -92,6 +94,15 @@ model Product {
   description String?
   imageUrl    String?
   isActive    Boolean  @default(true)
+
+  /// 라이브 오픈 상태. false면 미리 등록만 해두고 손님 화면에는 안 보임
+  isOpen   Boolean   @default(false)
+  openedAt DateTime? // 오픈 누른 시각 (오픈 순서대로 정렬)
+  closedAt DateTime? // 마감 누른 시각
+
+  /// 1인당 최대 구매수량. 0이면 제한 없음 (한 사람이 쓸어담는 것 방지)
+  limitPerPerson Int @default(0)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -127,8 +138,29 @@ model CartItem {
   @@unique([userId, variantId])
 }
 
+/// 상품 주문 1건. 배송은 하지 않고 '보관함'에 쌓였다가 정산(Settlement)으로 묶여 나감
 model Order {
-  id             Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
+  userId       Int?
+  /// 결제창 1회분마다 발급되는 값. 더블클릭·새로고침으로 같은 주문이 두 번 들어오는 것을 막음
+  clientToken  String?   @unique
+  settlementId Int? // 정산에 묶이면 채워짐. 없으면 아직 보관중
+  buyerName    String
+  buyerPhone   String
+  memo         String? // 주문 메모 (옵션 요청 등)
+  canceledAt   DateTime? // 취소된 주문은 매출·정산에서 제외
+  cancelReason String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  settlement Settlement? @relation(fields: [settlementId], references: [id], onDelete: SetNull)
+  items      OrderItem[]
+}
+
+/// 정산 = 보관중인 주문 여러 건을 묶어 한 번에 배송하는 단위. 배송비도 여기서 한 번만 부과
+model Settlement {
+  id             Int       @id @default(autoincrement())
   userId         Int?
   buyerName      String
   buyerPhone     String
@@ -137,18 +169,36 @@ model Order {
   address        String
   addressDetail  String?
   memo           String?
-  paymentMethod  String   @default("계좌이체") // 계좌이체 | 카드 | 기타
-  paymentStatus  String   @default("미입금") // 미입금 | 입금완료 | 환불완료
-  shippingStatus String   @default("접수전") // 접수전 | 접수완료 | 발송완료
+  paymentMethod  String    @default("계좌이체") // 계좌이체 | 카드 | 기타
+  paymentStatus  String    @default("미입금") // 미입금 | 입금완료 | 환불완료
+  shippingStatus String    @default("접수전") // 접수전 | 접수완료 | 발송완료
   trackingNumber String?
-  shippingFee    Int      @default(0)
-  canceledAt     DateTime? // 취소된 주문은 정산·택배접수에서 제외
+  shippingFee    Int       @default(0)
+  discount       Int       @default(0) // 쿠폰 할인액
+  couponId       Int?
+  canceledAt     DateTime?
   cancelReason   String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  user  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  items OrderItem[]
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  coupon Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  orders Order[]
+}
+
+/// 쿠폰. 정산할 때 하나만 적용
+model Coupon {
+  id        Int       @id @default(autoincrement())
+  name      String
+  type      String    @default("AMOUNT") // AMOUNT(정액) | PERCENT(정률) | FREE_SHIPPING(배송비무료)
+  value     Int       @default(0) // AMOUNT는 원, PERCENT는 %
+  minAmount Int       @default(0) // 최소 주문금액
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  settlements Settlement[]
 }
 
 /// 주문 당시 상품 정보를 스냅샷으로 보관 (상품이 수정/삭제돼도 주문 내역 유지)

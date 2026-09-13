@@ -142,24 +142,35 @@ export async function importTrackingAction(
   for (const row of sheet.rows) {
     const orderNoText = row[mapping.orderNo - 1] ?? "";
     const tracking = (row[mapping.trackingNumber - 1] ?? "").replace(/\s/g, "");
-    const orderId = Number(orderNoText.replace(/[^0-9]/g, ""));
+    // 엑셀의 '주문번호' 칸에는 정산번호(송장 1장 단위)가 들어감
+    const settlementId = Number(orderNoText.replace(/[^0-9]/g, ""));
 
-    if (!orderId || !tracking) continue;
+    if (!settlementId || !tracking) continue;
 
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
-    if (!order) {
-      failed.push(`주문 #${orderNoText}: 해당 주문이 없어요`);
+    const settlement = await prisma.settlement.findUnique({
+      where: { id: settlementId },
+    });
+    if (!settlement) {
+      failed.push(`정산 #${orderNoText}: 해당 정산 건이 없어요`);
       continue;
     }
 
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { trackingNumber: tracking, shippingStatus: "발송완료" },
+    await prisma.settlement.update({
+      where: { id: settlementId },
+      data: {
+        trackingNumber: tracking,
+        shippingStatus: "발송완료",
+        paymentStatus:
+          settlement.paymentStatus === "미입금"
+            ? "입금완료"
+            : settlement.paymentStatus,
+      },
     });
     updated += 1;
   }
 
   revalidatePath("/admin/shipping");
+  revalidatePath("/admin/settlements");
   revalidatePath("/admin/orders");
   revalidatePath("/my/orders");
 

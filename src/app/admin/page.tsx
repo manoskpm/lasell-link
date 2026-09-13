@@ -11,27 +11,40 @@ export default async function AdminHomePage() {
   const today = todayKst();
   const todayRange = kstRangeToUtc(today, today);
 
-  const [todayOrders, unpaidCount, toShipCount, soldOutCount, memberCount, settings] =
-    await Promise.all([
-      prisma.order.findMany({
-        where: { createdAt: todayRange, canceledAt: null },
-        include: { items: true },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.order.count({
-        where: { paymentStatus: "미입금", canceledAt: null },
-      }),
-      prisma.order.count({
-        where: {
-          paymentStatus: "입금완료",
-          shippingStatus: { not: "발송완료" },
-          canceledAt: null,
-        },
-      }),
-      prisma.productVariant.count({ where: { stock: 0 } }),
-      prisma.user.count({ where: { role: "CUSTOMER" } }),
-      getSettings(),
-    ]);
+  const [
+    todayOrders,
+    heldCount,
+    unpaidCount,
+    toShip,
+    openCount,
+    soldOutCount,
+    memberCount,
+    settings,
+  ] = await Promise.all([
+    prisma.order.findMany({
+      where: { createdAt: todayRange, canceledAt: null },
+      include: { items: true, settlement: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.order.count({ where: { canceledAt: null, settlementId: null } }),
+    prisma.settlement.count({
+      where: { paymentStatus: "미입금", canceledAt: null },
+    }),
+    prisma.settlement.findMany({
+      where: {
+        paymentStatus: "입금완료",
+        shippingStatus: { not: "발송완료" },
+        canceledAt: null,
+      },
+      include: { orders: { include: { items: true } } },
+      orderBy: { createdAt: "asc" },
+      take: 20,
+    }),
+    prisma.product.count({ where: { isActive: true, isOpen: true } }),
+    prisma.productVariant.count({ where: { stock: 0 } }),
+    prisma.user.count({ where: { role: "CUSTOMER" } }),
+    getSettings(),
+  ]);
 
   const todaySales = todayOrders.reduce(
     (sum, order) =>
@@ -47,14 +60,14 @@ export default async function AdminHomePage() {
           <p className="mt-1 text-sm text-zinc-500">{today} (한국시간 기준)</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/admin/live" className="chip bg-rose-500 text-white">
+            🔴 라이브 오픈 콘솔
+          </Link>
           <Link
             href="/admin/products/quick"
             className="chip bg-zinc-900 text-white"
           >
             ⚡ 방송중 빠른등록
-          </Link>
-          <Link href="/admin/products/new" className="chip bg-zinc-100 text-zinc-700">
-            + 상품 등록
           </Link>
           <Link href="/admin/shipping" className="chip bg-zinc-100 text-zinc-700">
             택배 접수하기
@@ -71,12 +84,13 @@ export default async function AdminHomePage() {
         </Link>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         <Stat label="오늘 주문" value={`${todayOrders.length}건`} />
         <Stat label="오늘 매출" value={won(todaySales)} />
-        <Stat label="미입금" value={`${unpaidCount}건`} highlight={unpaidCount > 0} />
-        <Stat label="발송대기" value={`${toShipCount}건`} highlight={toShipCount > 0} />
-        <Stat label="회원" value={`${memberCount}명`} />
+        <Stat label="오픈중 상품" value={`${openCount}개`} />
+        <Stat label="보관중 주문" value={`${heldCount}건`} />
+        <Stat label="미입금 정산" value={`${unpaidCount}건`} highlight={unpaidCount > 0} />
+        <Stat label="발송대기" value={`${toShip.length}건`} highlight={toShip.length > 0} />
       </div>
 
       <section className="flex flex-col gap-3">
@@ -105,7 +119,6 @@ export default async function AdminHomePage() {
                     <th className="px-4 py-3">품목</th>
                     <th className="px-4 py-3 text-right">금액</th>
                     <th className="px-4 py-3">상태</th>
-                    <th className="px-4 py-3">발송처리</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,18 +153,20 @@ export default async function AdminHomePage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col items-start gap-1">
-                          <StatusChip status={order.paymentStatus} />
-                          <StatusChip status={order.shippingStatus} />
+                          {order.settlement ? (
+                            <>
+                              <Link
+                                href={`/admin/settlements/${order.settlement.id}`}
+                                className="chip bg-blue-50 text-blue-700"
+                              >
+                                정산 #{order.settlement.id}
+                              </Link>
+                              <StatusChip status={order.settlement.paymentStatus} />
+                            </>
+                          ) : (
+                            <StatusChip status="보관중" />
+                          )}
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <ShipRow
-                          orderId={order.id}
-                          trackingNumber={order.trackingNumber}
-                          shippingStatus={order.shippingStatus}
-                          trackingUrlTemplate={settings.trackingUrlTemplate}
-                          courierName={settings.courierName}
-                        />
                       </td>
                     </tr>
                   ))}
@@ -169,10 +184,11 @@ export default async function AdminHomePage() {
                     >
                       #{order.id} {order.buyerName}
                     </Link>
-                    <div className="flex gap-1">
-                      <StatusChip status={order.paymentStatus} />
-                      <StatusChip status={order.shippingStatus} />
-                    </div>
+                    {order.settlement ? (
+                      <StatusChip status={order.settlement.paymentStatus} />
+                    ) : (
+                      <StatusChip status="보관중" />
+                    )}
                   </div>
                   <div className="border-t border-zinc-100 pt-1.5">
                     {order.items.map((item) => (
@@ -181,17 +197,63 @@ export default async function AdminHomePage() {
                       </p>
                     ))}
                   </div>
-                  <ShipRow
-                    orderId={order.id}
-                    trackingNumber={order.trackingNumber}
-                    shippingStatus={order.shippingStatus}
-                    trackingUrlTemplate={settings.trackingUrlTemplate}
-                    courierName={settings.courierName}
-                  />
                 </div>
               ))}
             </div>
           </>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">
+            발송대기 정산 ({toShip.length}건)
+          </h2>
+          <Link href="/admin/settlements" className="text-xs text-zinc-500 underline">
+            정산 전체 보기
+          </Link>
+        </div>
+
+        {toShip.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-zinc-200 bg-white py-10 text-center text-sm text-zinc-500">
+            발송할 정산 건이 없어요.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {toShip.map((settlement) => (
+              <div key={settlement.id} className="card flex flex-col gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Link
+                    href={`/admin/settlements/${settlement.id}`}
+                    className="text-sm font-semibold underline"
+                  >
+                    정산 #{settlement.id} {settlement.buyerName}
+                  </Link>
+                  <StatusChip status={settlement.shippingStatus} />
+                </div>
+                <p className="text-xs text-zinc-500">
+                  {settlement.zipcode ? `[${settlement.zipcode}] ` : ""}
+                  {settlement.address} {settlement.addressDetail ?? ""}
+                </p>
+                <div className="border-t border-zinc-100 pt-1.5">
+                  {settlement.orders.flatMap((order) =>
+                    order.items.map((item) => (
+                      <p key={item.id} className="text-xs font-medium text-zinc-700">
+                        {itemLine(item)}
+                      </p>
+                    ))
+                  )}
+                </div>
+                <ShipRow
+                  settlementId={settlement.id}
+                  trackingNumber={settlement.trackingNumber}
+                  shippingStatus={settlement.shippingStatus}
+                  trackingUrlTemplate={settings.trackingUrlTemplate}
+                  courierName={settings.courierName}
+                />
+              </div>
+            ))}
+          </div>
         )}
       </section>
 
@@ -203,6 +265,8 @@ export default async function AdminHomePage() {
           </Link>
         </p>
       )}
+
+      <p className="text-xs text-zinc-400">회원 {memberCount}명</p>
     </div>
   );
 }

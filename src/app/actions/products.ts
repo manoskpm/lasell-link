@@ -14,6 +14,13 @@ function splitOptions(raw: string) {
     .filter(Boolean);
 }
 
+/// 1인당 구매제한. 비우거나 0이면 제한 없음
+function parseLimit(raw: FormDataEntryValue | null) {
+  const value = Number(String(raw ?? "").trim());
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.round(value);
+}
+
 /// 특가는 비워두거나 0이면 없음으로 처리
 function parseSalePrice(raw: FormDataEntryValue | null, price: number) {
   const value = Number(String(raw ?? "").trim());
@@ -60,6 +67,9 @@ export async function createProductAction(
       category,
       description,
       imageUrl,
+      limitPerPerson: parseLimit(formData.get("limitPerPerson")),
+      isOpen: Boolean(formData.get("openNow")),
+      openedAt: formData.get("openNow") ? new Date() : null,
       variants: { create: variants },
     },
   });
@@ -98,6 +108,7 @@ export async function updateProductAction(
       cost: Math.round(cost) || 0,
       category: String(formData.get("category") ?? "의류"),
       description: String(formData.get("description") ?? "").trim() || null,
+      limitPerPerson: parseLimit(formData.get("limitPerPerson")),
       ...(newImage ? { imageUrl: newImage } : {}),
       ...(formData.get("removeImage") ? { imageUrl: null } : {}),
     },
@@ -185,6 +196,9 @@ export async function quickCreateProductAction(
       salePrice: parseSalePrice(formData.get("salePrice"), Math.round(price)),
       category,
       imageUrl,
+      limitPerPerson: parseLimit(formData.get("limitPerPerson")),
+      isOpen: true, // 방송 중 등록이라 바로 손님 화면에 뜸
+      openedAt: new Date(),
       variants: {
         create: sizeList.flatMap((size) =>
           colorList.map((color) => ({ size, color, stock }))
@@ -230,6 +244,34 @@ export async function toggleProductActiveAction(
     data: { isActive },
   });
   revalidatePath("/", "layout");
+}
+
+/// 라이브 중 상품 공개/마감. 미리 등록해둔 상품을 방송 순서대로 하나씩 오픈
+export async function setProductOpenAction(productId: number, isOpen: boolean) {
+  await requireAdmin();
+
+  await prisma.product.update({
+    where: { id: productId },
+    data: isOpen
+      ? { isOpen: true, isActive: true, openedAt: new Date(), closedAt: null }
+      : { isOpen: false, closedAt: new Date() },
+  });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/// 방송 끝나고 오픈중인 상품을 한 번에 내림
+export async function closeAllProductsAction() {
+  await requireAdmin();
+
+  await prisma.product.updateMany({
+    where: { isOpen: true },
+    data: { isOpen: false, closedAt: new Date() },
+  });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 export async function deleteProductAction(productId: number) {

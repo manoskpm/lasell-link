@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { OpenToggle } from "@/components/OpenToggle";
 import { ToggleActive } from "@/components/ToggleActive";
 import { won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -7,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
     include: { variants: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ isOpen: "desc" }, { createdAt: "desc" }],
   });
 
   return (
@@ -15,6 +16,9 @@ export default async function AdminProductsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">상품 · 재고</h1>
         <div className="flex gap-2">
+          <Link href="/admin/live" className="chip bg-rose-500 text-white">
+            🔴 오픈 콘솔
+          </Link>
           <Link
             href="/admin/products/quick"
             className="chip bg-zinc-900 text-white"
@@ -65,18 +69,32 @@ export default async function AdminProductsPage() {
                   className="min-w-0 flex-1"
                 >
                   <p className="line-clamp-1 text-sm font-medium">
+                    {product.isOpen && (
+                      <span className="mr-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white align-middle">
+                        오픈중
+                      </span>
+                    )}
                     {product.name}
                   </p>
                   <p className="text-sm font-bold">{won(product.price)}</p>
                   <p className="text-xs text-zinc-400">
                     {product.category} · 옵션 {product.variants.length}개 · 재고{" "}
                     {totalStock}개
+                    {product.limitPerPerson > 0 &&
+                      ` · 1인 ${product.limitPerPerson}개`}
                   </p>
                 </Link>
-                <ToggleActive
-                  productId={product.id}
-                  isActive={product.isActive}
-                />
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <OpenToggle
+                    productId={product.id}
+                    isOpen={product.isOpen}
+                    soldOut={totalStock === 0}
+                  />
+                  <ToggleActive
+                    productId={product.id}
+                    isActive={product.isActive}
+                  />
+                </div>
               </div>
             );
           })}

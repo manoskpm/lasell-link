@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ShipRow } from "@/components/ShipRow";
 import { StatusChip } from "@/components/StatusChip";
 import { itemLine } from "@/lib/courier";
 import {
@@ -11,30 +10,21 @@ import {
 } from "@/lib/date";
 import { formatDate, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
 
-const STATUS_FILTERS = [
+const FILTERS = [
   { key: "all", label: "전체" },
-  { key: "unpaid", label: "미입금" },
-  { key: "toship", label: "발송대기" },
-  { key: "done", label: "발송완료" },
+  { key: "held", label: "보관중" },
+  { key: "settled", label: "정산완료" },
   { key: "canceled", label: "취소" },
 ];
 
 function statusWhere(filter: string) {
   if (filter === "canceled") return { canceledAt: { not: null } };
-  // 취소된 주문은 일반 목록에서 숨김
-  const notCanceled = { canceledAt: null };
-  if (filter === "unpaid") return { ...notCanceled, paymentStatus: "미입금" };
-  if (filter === "toship") {
-    return {
-      ...notCanceled,
-      paymentStatus: "입금완료",
-      shippingStatus: { not: "발송완료" },
-    };
+  if (filter === "held") return { canceledAt: null, settlementId: null };
+  if (filter === "settled") {
+    return { canceledAt: null, settlementId: { not: null } };
   }
-  if (filter === "done") return { ...notCanceled, shippingStatus: "발송완료" };
-  return notCanceled;
+  return { canceledAt: null };
 }
 
 export default async function AdminOrdersPage({
@@ -51,27 +41,22 @@ export default async function AdminOrdersPage({
   const createdAt = kstRangeToUtc(from, to);
   const keyword = q?.trim();
 
-  const [orders, settings] = await Promise.all([
-    prisma.order.findMany({
-      where: {
-        ...statusWhere(filter),
-        ...(createdAt.gte || createdAt.lte ? { createdAt } : {}),
-        ...(keyword
-          ? {
-              OR: [
-                { buyerName: { contains: keyword } },
-                { depositorName: { contains: keyword } },
-                { buyerPhone: { contains: keyword } },
-                { trackingNumber: { contains: keyword } },
-              ],
-            }
-          : {}),
-      },
-      include: { items: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    getSettings(),
-  ]);
+  const orders = await prisma.order.findMany({
+    where: {
+      ...statusWhere(filter),
+      ...(createdAt.gte || createdAt.lte ? { createdAt } : {}),
+      ...(keyword
+        ? {
+            OR: [
+              { buyerName: { contains: keyword } },
+              { buyerPhone: { contains: keyword } },
+            ],
+          }
+        : {}),
+    },
+    include: { items: true, settlement: true },
+    orderBy: { createdAt: "desc" },
+  });
 
   const sales = orders.reduce(
     (sum, order) =>
@@ -81,10 +66,6 @@ export default async function AdminOrdersPage({
   const costs = orders.reduce(
     (sum, order) =>
       sum + order.items.reduce((s, item) => s + item.cost * item.quantity, 0),
-    0
-  );
-  const shippingTotal = orders.reduce(
-    (sum, order) => sum + order.shippingFee,
     0
   );
 
@@ -105,8 +86,7 @@ export default async function AdminOrdersPage({
 
   const query = (params: Record<string, string | undefined>) => {
     const search = new URLSearchParams();
-    const merged = { filter, from, to, q, ...params };
-    for (const [key, value] of Object.entries(merged)) {
+    for (const [key, value] of Object.entries({ filter, from, to, q, ...params })) {
       if (value) search.set(key, value);
     }
     return `/admin/orders?${search.toString()}`;
@@ -120,17 +100,31 @@ export default async function AdminOrdersPage({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold lg:text-2xl">주문 · 정산</h1>
-        <a
-          href={`/api/admin/export/orders?${exportQuery.toString()}`}
-          className="chip bg-zinc-900 text-white"
-        >
-          엑셀 내려받기
-        </a>
+        <div>
+          <h1 className="text-xl font-bold lg:text-2xl">주문 · 매출</h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            상품 주문 단위예요. 배송은{" "}
+            <Link href="/admin/settlements" className="underline">
+              정산 · 배송
+            </Link>{" "}
+            화면에서 처리해요.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/admin/orders/new" className="chip bg-zinc-100 text-zinc-700">
+            + 대리주문
+          </Link>
+          <a
+            href={`/api/admin/export/orders?${exportQuery.toString()}`}
+            className="chip bg-zinc-900 text-white"
+          >
+            엑셀 내려받기
+          </a>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {STATUS_FILTERS.map((item) => (
+        {FILTERS.map((item) => (
           <Link
             key={item.key}
             href={query({ filter: item.key })}
@@ -152,7 +146,7 @@ export default async function AdminOrdersPage({
         <input
           name="q"
           defaultValue={keyword ?? ""}
-          placeholder="구매자명 · 입금자명 · 연락처 · 운송장 검색"
+          placeholder="구매자명 · 연락처 검색"
           className="input max-w-sm"
         />
         <button
@@ -161,14 +155,6 @@ export default async function AdminOrdersPage({
         >
           검색
         </button>
-        {keyword && (
-          <Link
-            href={query({ q: "" })}
-            className="flex items-center px-2 text-sm text-zinc-500 underline"
-          >
-            검색 해제
-          </Link>
-        )}
       </form>
 
       <form
@@ -217,10 +203,9 @@ export default async function AdminOrdersPage({
         </div>
       </form>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="주문 건수" value={`${orders.length}건`} />
         <Stat label="상품매출" value={won(sales)} />
-        <Stat label="배송비" value={won(shippingTotal)} />
         <Stat label="원가" value={won(costs)} />
         <Stat label="예상 순익" value={won(sales - costs)} accent />
       </div>
@@ -251,166 +236,58 @@ export default async function AdminOrdersPage({
           해당하는 주문이 없어요.
         </p>
       ) : (
-        <>
-          {/* PC: 표 형태 */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-zinc-200 bg-white lg:block">
-            <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-xs text-zinc-500">
-                <tr>
-                  <th className="px-4 py-3">주문</th>
-                  <th className="px-4 py-3">구매자</th>
-                  <th className="px-4 py-3">배송지</th>
-                  <th className="px-4 py-3">품목</th>
-                  <th className="px-4 py-3 text-right">금액</th>
-                  <th className="px-4 py-3">상태</th>
-                  <th className="px-4 py-3">발송처리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => {
-                  const total = order.items.reduce(
-                    (sum, item) => sum + item.price * item.quantity,
-                    0
-                  );
-                  return (
-                    <tr key={order.id} className="border-b border-zinc-100 align-top">
-                      <td className="px-4 py-3 whitespace-nowrap">
+        <div className="flex flex-col gap-3">
+          {orders.map((order) => {
+            const total = order.items.reduce(
+              (sum, item) => sum + item.price * item.quantity,
+              0
+            );
+            return (
+              <div key={order.id} className="card flex flex-col gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Link
+                    href={`/admin/orders/${order.id}`}
+                    className="text-sm font-semibold underline"
+                  >
+                    #{order.id} {order.buyerName}
+                  </Link>
+                  <div className="flex flex-wrap gap-1">
+                    {order.canceledAt ? (
+                      <StatusChip status="취소됨" />
+                    ) : order.settlement ? (
+                      <>
                         <Link
-                          href={`/admin/orders/${order.id}`}
-                          className="font-semibold underline"
+                          href={`/admin/settlements/${order.settlement.id}`}
+                          className="chip bg-blue-50 text-blue-700"
                         >
-                          #{order.id}
+                          정산 #{order.settlement.id}
                         </Link>
-                        <p className="text-xs text-zinc-400">
-                          {formatDate(order.createdAt)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <p className="font-medium">{order.buyerName}</p>
-                        <p className="text-xs text-zinc-500">
-                          {order.buyerPhone}
-                        </p>
-                        {order.depositorName &&
-                          order.depositorName !== order.buyerName && (
-                            <p className="text-xs font-medium text-amber-600">
-                              입금 {order.depositorName}
-                            </p>
-                          )}
-                      </td>
-                      <td className="max-w-[220px] px-4 py-3 text-xs text-zinc-600">
-                        {order.zipcode ? `[${order.zipcode}] ` : ""}
-                        {order.address} {order.addressDetail ?? ""}
-                      </td>
-                      <td className="px-4 py-3">
-                        {order.items.map((item) => (
-                          <p key={item.id} className="whitespace-nowrap text-xs">
-                            {itemLine(item)}
-                          </p>
-                        ))}
-                      </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <p className="font-semibold">
-                          {won(total + order.shippingFee)}
-                        </p>
-                        {order.shippingFee > 0 && (
-                          <p className="text-xs text-zinc-400">
-                            배송비 {won(order.shippingFee)}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col items-start gap-1">
-                          {order.canceledAt && <StatusChip status="취소됨" />}
-                          <StatusChip status={order.paymentStatus} />
-                          {!order.canceledAt && (
-                            <StatusChip status={order.shippingStatus} />
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {order.canceledAt ? (
-                          <span className="text-xs text-zinc-400">
-                            취소된 주문
-                          </span>
-                        ) : (
-                          <ShipRow
-                            orderId={order.id}
-                            trackingNumber={order.trackingNumber}
-                            shippingStatus={order.shippingStatus}
-                            trackingUrlTemplate={settings.trackingUrlTemplate}
-                            courierName={settings.courierName}
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 모바일: 카드 형태 */}
-          <div className="flex flex-col gap-3 lg:hidden">
-            {orders.map((order) => {
-              const total = order.items.reduce(
-                (sum, item) => sum + item.price * item.quantity,
-                0
-              );
-              return (
-                <div key={order.id} className="card flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <Link
-                      href={`/admin/orders/${order.id}`}
-                      className="text-sm font-semibold underline"
-                    >
-                      #{order.id} {order.buyerName}
-                    </Link>
-                    <div className="flex flex-wrap justify-end gap-1">
-                      {order.canceledAt && <StatusChip status="취소됨" />}
-                      <StatusChip status={order.paymentStatus} />
-                      {!order.canceledAt && (
-                        <StatusChip status={order.shippingStatus} />
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    {order.buyerPhone} · {formatDate(order.createdAt)}
-                  </p>
-                  {order.depositorName &&
-                    order.depositorName !== order.buyerName && (
-                      <p className="text-xs font-medium text-amber-600">
-                        입금자명 {order.depositorName}
-                      </p>
+                        <StatusChip status={order.settlement.paymentStatus} />
+                        <StatusChip status={order.settlement.shippingStatus} />
+                      </>
+                    ) : (
+                      <StatusChip status="보관중" />
                     )}
-                  <div className="border-t border-zinc-100 pt-1.5">
-                    {order.items.map((item) => (
-                      <p key={item.id} className="text-xs font-medium text-zinc-700">
-                        {itemLine(item)}
-                      </p>
-                    ))}
                   </div>
-                  <p className="text-base font-bold">
-                    {won(total + order.shippingFee)}
-                    {order.shippingFee > 0 && (
-                      <span className="ml-1 text-xs font-normal text-zinc-400">
-                        (배송비 {won(order.shippingFee)} 포함)
-                      </span>
-                    )}
-                  </p>
-                  {!order.canceledAt && (
-                    <ShipRow
-                      orderId={order.id}
-                      trackingNumber={order.trackingNumber}
-                      shippingStatus={order.shippingStatus}
-                      trackingUrlTemplate={settings.trackingUrlTemplate}
-                      courierName={settings.courierName}
-                    />
-                  )}
                 </div>
-              );
-            })}
-          </div>
-        </>
+                <p className="text-xs text-zinc-500">
+                  {order.buyerPhone} · {formatDate(order.createdAt)}
+                </p>
+                <div className="border-t border-zinc-100 pt-1.5">
+                  {order.items.map((item) => (
+                    <p
+                      key={item.id}
+                      className="text-xs font-medium text-zinc-700"
+                    >
+                      {itemLine(item)}
+                    </p>
+                  ))}
+                </div>
+                <p className="text-base font-bold">{won(total)}</p>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

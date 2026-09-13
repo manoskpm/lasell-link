@@ -2,16 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { cancelOrderAction, restoreOrderAction } from "@/app/actions/orders";
+import { cancelSettlementAction } from "@/app/actions/orders";
 
+/// 정산(배송묶음) 취소. 묶인 주문들은 다시 손님 보관함으로 돌아감
 export function CancelOrderButton({
-  orderId,
+  settlementId,
   canceled,
-  shipped,
 }: {
-  orderId: number;
+  settlementId: number;
   canceled: boolean;
-  shipped: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -21,20 +20,9 @@ export function CancelOrderButton({
 
   if (canceled) {
     return (
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => {
-          if (!confirm("취소를 되돌릴까요? 재고가 다시 차감돼요.")) return;
-          startTransition(async () => {
-            await restoreOrderAction(orderId);
-            router.refresh();
-          });
-        }}
-        className="btn-secondary"
-      >
-        {pending ? "처리 중..." : "취소 되돌리기"}
-      </button>
+      <p className="py-3 text-center text-sm text-zinc-400">
+        취소된 정산이에요. 묶여 있던 주문은 손님 보관함으로 돌아갔어요.
+      </p>
     );
   }
 
@@ -45,23 +33,22 @@ export function CancelOrderButton({
         onClick={() => setOpen(true)}
         className="w-full py-3 text-sm text-red-500"
       >
-        주문 취소하기
+        정산 취소하기
       </button>
     );
   }
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5">
-      <p className="text-sm font-semibold text-red-700">주문 취소</p>
+      <p className="text-sm font-semibold text-red-700">정산 취소</p>
       <p className="text-xs text-red-600">
-        {shipped
-          ? "이미 발송된 주문이라 재고는 그대로 둡니다. 반품 받으면 재고를 직접 올려주세요."
-          : "취소하면 상품 재고가 자동으로 다시 채워져요."}
+        취소하면 묶여 있던 주문들이 손님 보관함으로 돌아가요. 상품 재고는
+        그대로 유지돼요.
       </p>
       <input
         value={reason}
         onChange={(event) => setReason(event.target.value)}
-        placeholder="취소 사유 (예: 손님 요청, 품절)"
+        placeholder="취소 사유 (예: 손님 요청, 배송지 변경)"
         className="input"
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -79,9 +66,9 @@ export function CancelOrderButton({
           onClick={() => {
             setError(null);
             startTransition(async () => {
-              const result = await cancelOrderAction(orderId, reason);
-              if (result?.error) {
-                setError(result.error);
+              const result = await cancelSettlementAction(settlementId, reason);
+              if (result && "error" in result && result.error) {
+                setError(String(result.error));
                 return;
               }
               setOpen(false);
