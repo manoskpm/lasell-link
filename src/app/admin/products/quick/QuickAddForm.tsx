@@ -5,7 +5,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { quickCreateProductAction } from "@/app/actions/products";
 
 const CATEGORIES = ["의류", "악세서리", "잡화"];
-const SIZE_PRESETS = ["FREE", "S,M,L", "S,M,L,XL"];
+const SIZE_PRESETS = ["FREE", "S,M,L", "S,M,L,XL", "S,M,L,XL,XXL"];
 const COLOR_PRESETS = ["블랙,아이보리", "블랙,화이트,베이지"];
 
 export function QuickAddForm() {

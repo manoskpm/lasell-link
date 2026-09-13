@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { createProductAction } from "@/app/actions/products";
 
 const CATEGORIES = ["의류", "악세서리", "잡화"];
-const SIZE_PRESETS = ["FREE", "S,M,L", "S,M,L,XL", "44,55,66"];
+const SIZE_PRESETS = ["FREE", "S,M,L", "S,M,L,XL", "S,M,L,XL,XXL", "44,55,66"];
 const COLOR_PRESETS = ["블랙,아이보리", "블랙,화이트,베이지"];
 
 export function NewProductForm() {
