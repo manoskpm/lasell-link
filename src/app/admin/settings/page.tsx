@@ -32,6 +32,7 @@ export default async function AdminSettingsPage() {
           trackingUrlTemplate: settings.trackingUrlTemplate ?? "",
           shippingFee: String(settings.shippingFee),
           freeShippingOver: String(settings.freeShippingOver),
+          courierCost: String(settings.courierCost),
         }}
       />
     </div>

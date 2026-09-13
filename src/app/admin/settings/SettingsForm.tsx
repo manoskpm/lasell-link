@@ -27,6 +27,7 @@ export function SettingsForm({
     trackingUrlTemplate: string;
     shippingFee: string;
     freeShippingOver: string;
+    courierCost: string;
   };
   logoUrl: string | null;
 }) {
@@ -261,6 +262,25 @@ export function SettingsForm({
           <p className="mt-1 text-xs text-zinc-500">
             이 금액 이상 구매하면 배송비가 0원. <b>0으로 두면</b> 무료배송 없이
             항상 기본 배송비가 붙어요.
+          </p>
+        </div>
+        <div>
+          <label className="label" htmlFor="courierCost">
+            택배 원가 (원)
+          </label>
+          <input
+            id="courierCost"
+            name="courierCost"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            className="input"
+            defaultValue={defaults.courierCost}
+            placeholder="2500"
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            택배사에 실제로 내는 건당 금액이에요. 무료배송으로 보내도 이 비용은
+            그대로 나가서, 순익 계산에서 빼드립니다.
           </p>
         </div>
       </div>

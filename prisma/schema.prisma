@@ -29,6 +29,8 @@ model Setting {
 
   // 배송비 정책
   shippingFee      Int @default(3000)
+  /// 택배사에 실제 지불하는 건당 단가. 무료배송이어도 이 비용은 그대로 나감
+  courierCost      Int @default(0)
   freeShippingOver Int @default(0) // 0이면 무료배송 조건 없음
 
   // 택배 송장의 '보내는분' 정보
@@ -78,6 +80,15 @@ model User {
   cartItems   CartItem[]
   orders      Order[]
   settlements Settlement[]
+}
+
+/// 지금 접속해 있는 사람을 세기 위한 기록. 손님 화면이 주기적으로 신호를 보냄
+model Presence {
+  id         String   @id // 방문자 임시 식별값 (브라우저 탭마다 하나)
+  userId     Int?
+  lastSeenAt DateTime
+
+  @@index([lastSeenAt])
 }
 
 model Session {

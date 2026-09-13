@@ -56,6 +56,7 @@ export async function updateSettingsAction(
     courierCustomerCode: nullable(formData.get("courierCustomerCode")),
     trackingUrlTemplate: nullable(formData.get("trackingUrlTemplate")),
     shippingFee: Math.max(0, Number(formData.get("shippingFee")) || 0),
+    courierCost: Math.max(0, Number(formData.get("courierCost")) || 0),
     freeShippingOver: Math.max(
       0,
       Number(formData.get("freeShippingOver")) || 0

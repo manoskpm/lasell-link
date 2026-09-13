@@ -10,6 +10,7 @@ import { formatDate, won } from "@/lib/format";
 import { isOnSale, sellingPrice } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
+import { ACTIVE_WINDOW_MS } from "@/app/api/presence/route";
 
 export default async function AdminLivePage() {
   const today = todayKst();
@@ -33,6 +34,28 @@ export default async function AdminLivePage() {
     where: { canceledAt: null, settlementId: null },
   });
 
+  // ── 오늘 현황판 집계 ──────────────────────────────
+  const todayOrders = await prisma.order.findMany({
+    where: { canceledAt: null, createdAt: kstRangeToUtc(today, today) },
+    include: { items: true },
+  });
+
+  const items = todayOrders.flatMap((order) => order.items);
+  const soldQty = items.reduce((sum, item) => sum + item.quantity, 0);
+  const sales = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cost = items.reduce((sum, item) => sum + item.cost * item.quantity, 0);
+
+  // 구매자 1명 = 택배 1박스. 무료배송이어도 택배비는 그대로 나가므로 순익에서 뺀다
+  const buyers = new Set(
+    todayOrders.map((order) => order.userId ?? `guest:${order.buyerPhone}`)
+  ).size;
+  const courierCost = buyers * settings.courierCost;
+  const profit = sales - cost - courierCost;
+
+  const viewers = await prisma.presence.count({
+    where: { lastSeenAt: { gte: new Date(Date.now() - ACTIVE_WINDOW_MS) } },
+  });
+
   const closesAt = settings.saleClosesAt
     ? new Intl.DateTimeFormat("ko-KR", {
         timeZone: "Asia/Seoul",
@@ -49,7 +72,7 @@ export default async function AdminLivePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <AutoRefresh seconds={5} />
+      <AutoRefresh seconds={3} />
 
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
@@ -71,6 +94,25 @@ export default async function AdminLivePage() {
           <CloseAllButton count={open.length} pendingOrders={pendingOrders} />
         </div>
       </div>
+
+      <section className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-rose-600">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-rose-500" />
+            지금 보는 중
+          </p>
+          <p className="mt-1 text-2xl font-bold text-rose-700">{viewers}명</p>
+        </div>
+        <Stat label="오늘 구매자" value={`${buyers}명`} />
+        <Stat label="오늘 판매수량" value={`${soldQty}개`} />
+        <Stat label="오늘 매출" value={won(sales)} hint="상품값만 · 배송비 제외" />
+        <Stat
+          label="예상 순익"
+          value={won(profit)}
+          hint={`원가 ${won(cost)} · 택배 ${won(courierCost)} 뺀 금액`}
+          accent
+        />
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-6">
@@ -128,6 +170,32 @@ export default async function AdminLivePage() {
           )}
         </aside>
       </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  hint,
+  accent,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3">
+      <p className="text-xs text-zinc-400">{label}</p>
+      <p
+        className={`mt-1 text-2xl font-bold ${
+          accent ? "text-emerald-600" : "text-zinc-900"
+        }`}
+      >
+        {value}
+      </p>
+      {hint && <p className="mt-0.5 text-[11px] text-zinc-400">{hint}</p>}
     </div>
   );
 }

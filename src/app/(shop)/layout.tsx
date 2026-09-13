@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BottomNav } from "@/components/BottomNav";
+import { PresencePing } from "@/components/PresencePing";
 import { ContactButton } from "@/components/ContactButton";
 import { ShopLogo } from "@/components/ShopLogo";
 import { getCartCount } from "@/app/actions/cart";
@@ -47,6 +48,7 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
         kakaoChannelUrl={settings.kakaoChannelUrl}
         chatUrl={settings.chatUrl}
       />
+      <PresencePing />
       <BottomNav cartCount={cartCount} />
     </div>
   );
