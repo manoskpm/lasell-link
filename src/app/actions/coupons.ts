@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { FormState } from "./auth";
 
-const TYPES = ["AMOUNT", "PERCENT", "FREE_SHIPPING"];
+const TYPES = ["AMOUNT", "FREE_SHIPPING"];
 
 export async function createCouponAction(
   _prev: FormState,
@@ -22,10 +22,7 @@ export async function createCouponAction(
   if (!name) return { error: "쿠폰 이름을 입력해주세요." };
   if (!TYPES.includes(type)) return { error: "쿠폰 종류를 다시 선택해주세요." };
   if (type !== "FREE_SHIPPING" && value <= 0) {
-    return { error: "할인 값을 입력해주세요." };
-  }
-  if (type === "PERCENT" && value > 100) {
-    return { error: "정률 할인은 100%를 넘을 수 없어요." };
+    return { error: "할인 금액을 입력해주세요." };
   }
 
   await prisma.coupon.create({

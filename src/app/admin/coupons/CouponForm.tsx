@@ -5,7 +5,6 @@ import { createCouponAction } from "@/app/actions/coupons";
 
 const TYPE_OPTIONS = [
   { value: "AMOUNT", label: "정액 할인 (원)" },
-  { value: "PERCENT", label: "정률 할인 (%)" },
   { value: "FREE_SHIPPING", label: "배송비 무료" },
 ];
 
@@ -52,7 +51,7 @@ export function CouponForm() {
       {type !== "FREE_SHIPPING" && (
         <div>
           <label className="label" htmlFor="value">
-            {type === "PERCENT" ? "할인율 (%)" : "할인 금액 (원)"} *
+            할인 금액 (원) *
           </label>
           <input
             id="value"
@@ -60,9 +59,8 @@ export function CouponForm() {
             type="number"
             inputMode="numeric"
             min={0}
-            max={type === "PERCENT" ? 100 : undefined}
             className="input"
-            placeholder={type === "PERCENT" ? "10" : "3000"}
+            placeholder="3000"
             required
           />
         </div>
