@@ -11,6 +11,7 @@ const ITEMS = [
   { href: "/admin/orders", label: "주문", desc: "매출 · 배송대기" },
   { href: "/admin/settlements", label: "정산", desc: "합배송 · 발송" },
   { href: "/admin/coupons", label: "쿠폰", desc: "발행 · 관리" },
+  { href: "/admin/finance", label: "장부", desc: "수입 · 지출" },
   { href: "/admin/shipping", label: "택배", desc: "접수 · 송장" },
   { href: "/admin/customers", label: "회원", desc: "고객 정보" },
   { href: "/admin/settings", label: "설정", desc: "상점 정보" },

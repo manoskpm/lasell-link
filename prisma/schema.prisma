@@ -210,6 +210,30 @@ model Settlement {
   orders Order[]
 }
 
+/// 셀러가 직접 적는 지출. 매출은 주문에서 자동으로 잡히므로 지출만 넣으면 장부가 완성됨
+model Expense {
+  id        Int      @id @default(autoincrement())
+  spentAt   DateTime // 쓴 날짜
+  category  String   @default("기타") // 사입 | 포장재 | 택배 | 광고 | 수수료 | 임대료 | 인건비 | 기타
+  memo      String?
+  amount    Int
+  createdAt DateTime @default(now())
+
+  @@index([spentAt])
+}
+
+/// 매달 똑같이 나가는 돈. 등록해두면 월 손익에 자동으로 반영됨
+model FixedCost {
+  id        Int      @id @default(autoincrement())
+  name      String // 예: 창고 월세
+  category  String   @default("임대료")
+  amount    Int
+  isActive  Boolean  @default(true)
+  startedAt DateTime @default(now()) // 이 달부터 반영
+  endedAt   DateTime? // 그만둔 달
+  createdAt DateTime @default(now())
+}
+
 /// 쿠폰. 정산할 때 하나만 적용
 model Coupon {
   id        Int       @id @default(autoincrement())
