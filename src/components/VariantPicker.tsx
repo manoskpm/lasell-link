@@ -177,10 +177,12 @@ export function VariantPicker({
                     size === option
                       ? "border-zinc-900 bg-zinc-900 text-white"
                       : "border-zinc-300 bg-white text-zinc-700"
-                  } ${soldOut ? "border-zinc-200 bg-zinc-50 text-zinc-300 line-through" : ""}`}
+                  } ${soldOut ? "cursor-not-allowed border-zinc-200 bg-white text-zinc-300" : ""}`}
                 >
                   {option}
-                  {soldOut && <span className="ml-1 text-[10px]">품절</span>}
+                  {soldOut && (
+                    <span className="ml-1 text-[10px] text-zinc-300">품절</span>
+                  )}
                 </button>
               );
             })}
@@ -208,10 +210,12 @@ export function VariantPicker({
                     color === option
                       ? "border-zinc-900 bg-zinc-900 text-white"
                       : "border-zinc-300 bg-white text-zinc-700"
-                  } ${soldOut ? "border-zinc-200 bg-zinc-50 text-zinc-300 line-through" : ""}`}
+                  } ${soldOut ? "cursor-not-allowed border-zinc-200 bg-white text-zinc-300" : ""}`}
                 >
                   {option}
-                  {soldOut && <span className="ml-1 text-[10px]">품절</span>}
+                  {soldOut && (
+                    <span className="ml-1 text-[10px] text-zinc-300">품절</span>
+                  )}
                 </button>
               );
             })}
