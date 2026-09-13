@@ -117,8 +117,11 @@ export default async function MyOrdersPage() {
               )}
             </div>
 
-            <Link href="/my/settle" className="btn-primary">
-방송 전에 먼저 받기
+            <Link
+              href="/my/settle"
+              className="py-2 text-center text-sm text-zinc-500 underline"
+            >
+              급하면 지금 바로 배송받기
             </Link>
           </>
         )}
@@ -129,7 +132,7 @@ export default async function MyOrdersPage() {
 
         {settlements.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-zinc-200 py-10 text-center text-sm text-zinc-500">
-            아직 정산한 내역이 없어요.
+            아직 배송된 상품이 없어요.
           </p>
         ) : (
           <div className="flex flex-col gap-2">

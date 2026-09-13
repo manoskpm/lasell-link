@@ -37,7 +37,7 @@ export function CloseAllButton({ count }: { count: number }) {
   return (
     <button
       type="button"
-      disabled={pending}
+      disabled={pending || count === 0}
       onClick={() => {
         if (
           !confirm(
@@ -54,7 +54,11 @@ export function CloseAllButton({ count }: { count: number }) {
       }}
       className="chip bg-zinc-900 text-white disabled:opacity-50"
     >
-      {pending ? "정리하는 중..." : "방송종료 · 배송 넘기기"}
+      {pending
+        ? "정리하는 중..."
+        : count === 0
+          ? "오픈중인 상품 없음"
+          : "방송종료 · 배송 넘기기"}
     </button>
   );
 }

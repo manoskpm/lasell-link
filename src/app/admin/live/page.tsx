@@ -48,7 +48,7 @@ export default async function AdminLivePage() {
           >
             ⚡ 빠른등록
           </Link>
-          {open.length > 0 && <CloseAllButton count={open.length} />}
+          <CloseAllButton count={open.length} />
         </div>
       </div>
 
