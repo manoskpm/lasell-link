@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import type { Prisma } from "@/generated/prisma/client";
 import { getCurrentUser } from "./auth";
 import { prisma } from "./prisma";
 
@@ -39,7 +40,9 @@ export async function hasPendingPlatformSetup() {
 
 type AccessUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
-type AccessShop = { id: number; name: string; status: string } | null;
+/// 셀러 화면에서 그대로 쓸 수 있게 상점 전체 정보(택배사 포함)를 담는다.
+/// getAccess()가 한 번 조회한 걸 캐시해서 쓰므로, 화면마다 다시 쿼리하지 않는다.
+type AccessShop = Prisma.ShopGetPayload<{ include: { courier: true } }> | null;
 
 export type Access = {
   user: AccessUser | null;
@@ -70,7 +73,7 @@ export const getAccess = cache(async (): Promise<Access> => {
     user && isSeller
       ? await prisma.shop.findUnique({
           where: { ownerUserId: user.id },
-          select: { id: true, name: true, status: true },
+          include: { courier: true },
         })
       : null;
   const sellerActive = isSeller && shop?.status === "ACTIVE";
@@ -108,6 +111,30 @@ export async function requireSellerConsole() {
   return access.user;
 }
 
+/// 셀러 화면 검사에 더해, 그 화면이 다루는 상점까지 같이 돌려준다.
+/// 셀러 본인이면 자기 상점, 운영자가 둘러보는 중이면(테스트·지원용) 있는 상점 중 첫 번째.
+/// getAccess()가 이미 상점을 조회해 두므로 추가 쿼리는 운영자가 둘러볼 때뿐이다.
+export async function requireOwnShop() {
+  const access = await getAccess();
+  if (!access.user) redirect("/login");
+  if (access.isSuspendedSeller && !access.isPlatform) redirect("/seller/status");
+  if (!access.canUseSellerConsole) redirect("/");
+
+  const shop =
+    access.shop ??
+    (access.isPlatform
+      ? await prisma.shop.findFirst({
+          orderBy: { id: "asc" },
+          include: { courier: true },
+        })
+      : null);
+
+  // 운영자인데 아직 승인한 셀러가 하나도 없는 경우 (이론상만 도달)
+  if (!shop) redirect("/platform/sellers");
+
+  return { user: access.user, shop };
+}
+
 /// 운영자 화면용 검사. 운영자만 통과.
 export async function requirePlatform() {
   const access = await getAccess();
@@ -126,4 +153,29 @@ export async function sellerConsoleApiGuard(): Promise<Response | null> {
     );
   }
   return null;
+}
+
+/// sellerConsoleApiGuard와 같은 검사에 더해, 그 요청이 다루는 상점까지 돌려준다.
+export async function sellerConsoleShopApiGuard(): Promise<
+  { shop: NonNullable<AccessShop> } | Response
+> {
+  const access = await getAccess();
+  if (!access.canUseSellerConsole) {
+    return new Response(
+      "셀러 화면에서만 받을 수 있는 파일이에요. 셀러 계정으로 로그인한 뒤 다시 눌러주세요.",
+      { status: 403 }
+    );
+  }
+  const shop =
+    access.shop ??
+    (access.isPlatform
+      ? await prisma.shop.findFirst({
+          orderBy: { id: "asc" },
+          include: { courier: true },
+        })
+      : null);
+  if (!shop) {
+    return new Response("아직 문을 연 상점이 없어요.", { status: 404 });
+  }
+  return { shop };
 }

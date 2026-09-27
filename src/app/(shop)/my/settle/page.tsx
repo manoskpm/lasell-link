@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { isCouponUsable } from "@/lib/coupon";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
+import { bankAccountRecentlyChanged, getStorefrontSettings } from "@/lib/shop";
 import { planShipping } from "@/lib/shippingPlan";
 import { SettleForm } from "./SettleForm";
 
@@ -15,7 +15,7 @@ export default async function SettlePage() {
       include: { items: true },
       orderBy: { createdAt: "asc" },
     }),
-    getSettings(),
+    getStorefrontSettings(),
     prisma.coupon.findMany({
       where: { isActive: true },
       orderBy: { createdAt: "desc" },
@@ -90,6 +90,7 @@ export default async function SettlePage() {
           addressDetail: user.addressDetail ?? "",
         }}
         bankAccount={settings.bankAccount}
+        bankAccountChanged={bankAccountRecentlyChanged(settings.bankAccountChangedAt)}
       />
     </div>
   );

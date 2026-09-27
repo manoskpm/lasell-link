@@ -1,4 +1,4 @@
-import { requireSellerConsole } from "@/lib/access";
+import { requireOwnShop } from "@/lib/access";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { TrackingImportForm } from "./TrackingImportForm";
@@ -7,10 +7,13 @@ import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminShippingPage() {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
   const [templates, settlements] = await Promise.all([
-    prisma.courierTemplate.findMany({ orderBy: [{ isDefault: "desc" }, { id: "asc" }] }),
+    prisma.courierTemplate.findMany({
+      where: { shopId: shop.id },
+      orderBy: [{ isDefault: "desc" }, { id: "asc" }],
+    }),
     prisma.settlement.findMany({
       where: {
         paymentStatus: "입금완료",

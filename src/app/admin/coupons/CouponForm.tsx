@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createCouponAction } from "@/app/actions/coupons";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 
 const TYPE_OPTIONS = [
   { value: "AMOUNT", label: "정액 할인 (원)" },
@@ -13,7 +14,7 @@ export function CouponForm() {
   const [type, setType] = useState("AMOUNT");
 
   return (
-    <form action={formAction} className="card flex flex-col gap-3">
+    <KeepValuesForm action={formAction} className="card flex flex-col gap-3">
       <p className="text-sm font-semibold">쿠폰 만들기</p>
 
       <div>
@@ -97,6 +98,6 @@ export function CouponForm() {
       <button type="submit" disabled={pending} className="btn-primary">
         {pending ? "만드는 중..." : "쿠폰 만들기"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

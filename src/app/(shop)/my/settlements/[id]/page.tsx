@@ -4,7 +4,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { requireUser } from "@/lib/auth";
 import { formatDate, optionLabel, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
+import { bankAccountRecentlyChanged, getStorefrontSettings } from "@/lib/shop";
 import { buildTrackingUrl } from "@/lib/tracking";
 
 export default async function SettlementDetailPage({
@@ -20,7 +20,7 @@ export default async function SettlementDetailPage({
       where: { id: Number(id) },
       include: { orders: { include: { items: true } }, coupon: true },
     }),
-    getSettings(),
+    getStorefrontSettings(),
   ]);
 
   if (!settlement || settlement.userId !== user.id) notFound();
@@ -154,6 +154,12 @@ export default async function SettlementDetailPage({
       {settlement.paymentStatus === "미입금" && settings.bankAccount && (
         <p className="rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-700">
           입금계좌: <b>{settings.bankAccount}</b>
+          {bankAccountRecentlyChanged(settings.bankAccountChangedAt) && (
+            <>
+              <br />
+              계좌가 최근에 바뀌었어요. 위 계좌가 맞는지 한 번 더 확인해주세요.
+            </>
+          )}
           <br />
           입금 확인 후 발송해드려요.
         </p>

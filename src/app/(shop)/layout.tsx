@@ -6,21 +6,20 @@ import { ContactButton } from "@/components/ContactButton";
 import { ShopLogo } from "@/components/ShopLogo";
 import { getCartCount } from "@/app/actions/cart";
 import { getAccess } from "@/lib/access";
-import { getSettings } from "@/lib/settings";
-import { storeClosedReason } from "@/lib/shop";
+import { getStorefrontSettings, storeClosedReason } from "@/lib/shop";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSettings();
+  const settings = await getStorefrontSettings();
   return {
-    title: settings.shopName,
-    description: `${settings.shopName} 라이브 판매`,
+    title: settings.name,
+    description: `${settings.name} 라이브 판매`,
   };
 }
 
 export default async function ShopLayout({ children }: LayoutProps<"/">) {
   const [access, settings, closedReason] = await Promise.all([
     getAccess(),
-    getSettings(),
+    getStorefrontSettings(),
     storeClosedReason(),
   ]);
   const user = access.user;
@@ -35,7 +34,7 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
       )}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-100 bg-white/95 px-4 py-3 backdrop-blur">
         <Link href="/" className="flex items-center">
-          <ShopLogo logoUrl={settings.logoUrl} shopName={settings.shopName} />
+          <ShopLogo logoUrl={settings.logoUrl} shopName={settings.name} />
         </Link>
         <div className="flex items-center gap-3 text-sm">
           {access.isPlatform ? (

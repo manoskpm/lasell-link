@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { formatDate, optionLabel, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { isCouponUsable } from "@/lib/coupon";
-import { getSettings } from "@/lib/settings";
+import { getStorefrontSettings } from "@/lib/shop";
 import { planShipping } from "@/lib/shippingPlan";
 
 export default async function MyOrdersPage() {
@@ -22,7 +22,7 @@ export default async function MyOrdersPage() {
       include: { orders: { include: { items: true } } },
       orderBy: { createdAt: "desc" },
     }),
-    getSettings(),
+    getStorefrontSettings(),
   ]);
 
   const coupons = await prisma.coupon.findMany({

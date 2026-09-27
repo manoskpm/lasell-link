@@ -1,4 +1,4 @@
-import { requireSellerConsole } from "@/lib/access";
+import { requireOwnShop } from "@/lib/access";
 import Image from "next/image";
 import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -10,15 +10,14 @@ import { kstRangeToUtc, todayKst } from "@/lib/date";
 import { formatDate, won } from "@/lib/format";
 import { isOnSale, sellingPrice } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
 import { ACTIVE_WINDOW_MS } from "@/app/api/presence/route";
 
 export default async function AdminLivePage() {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
   const today = todayKst();
 
-  const [products, recentOrders, settings] = await Promise.all([
+  const [products, recentOrders] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true },
       include: { variants: { orderBy: { id: "asc" } } },
@@ -30,7 +29,6 @@ export default async function AdminLivePage() {
       orderBy: { id: "desc" },
       take: 15,
     }),
-    getSettings(),
   ]);
 
   const pendingOrders = await prisma.order.count({
@@ -52,7 +50,7 @@ export default async function AdminLivePage() {
   const buyers = new Set(
     todayOrders.map((order) => order.userId ?? `guest:${order.buyerPhone}`)
   ).size;
-  const courierCost = buyers * settings.courierCost;
+  const courierCost = buyers * shop.courierCost;
 
   // 오늘 배송으로 넘어간 건에 적용된 쿠폰 할인 (방송 중엔 아직 0)
   const todaySettlements = await prisma.settlement.aggregate({
@@ -83,7 +81,7 @@ export default async function AdminLivePage() {
     },
   });
 
-  const closesAt = settings.saleClosesAt
+  const closesAt = shop.saleClosesAt
     ? new Intl.DateTimeFormat("ko-KR", {
         timeZone: "Asia/Seoul",
         month: "long",
@@ -91,7 +89,7 @@ export default async function AdminLivePage() {
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
-      }).format(settings.saleClosesAt)
+      }).format(shop.saleClosesAt)
     : null;
 
   const open = products.filter((product) => product.isOpen);

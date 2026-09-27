@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updateCourierUnitCostAction } from "@/app/actions/finance";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 
 /// 청구서를 적기 전까지 쓰는 건당 어림값
 export function CourierUnitForm({ value }: { value: number }) {
@@ -11,7 +12,7 @@ export function CourierUnitForm({ value }: { value: number }) {
   );
 
   return (
-    <form action={formAction} className="flex flex-wrap items-center gap-2">
+    <KeepValuesForm action={formAction} className="flex flex-wrap items-center gap-2">
       <span className="text-sm text-zinc-600">건당</span>
       <div className="w-28">
         <input
@@ -30,6 +31,6 @@ export function CourierUnitForm({ value }: { value: number }) {
       {state?.error && (
         <span className="text-xs text-red-600">{state.error}</span>
       )}
-    </form>
+    </KeepValuesForm>
   );
 }

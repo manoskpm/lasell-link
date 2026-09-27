@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { updateProductAction } from "@/app/actions/products";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 
 const CATEGORIES = ["의류", "악세서리", "잡화"];
 
@@ -37,7 +38,7 @@ export function ProductEditForm({
   }, [state, router]);
 
   return (
-    <form action={formAction} className="card flex flex-col gap-4">
+    <KeepValuesForm action={formAction} className="card flex flex-col gap-4">
       <input type="hidden" name="productId" value={product.id} />
       <p className="text-sm font-semibold">상품 정보 수정</p>
 
@@ -211,6 +212,6 @@ export function ProductEditForm({
       <button type="submit" disabled={pending} className="btn-primary">
         {pending ? "저장 중..." : "상품 정보 저장"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

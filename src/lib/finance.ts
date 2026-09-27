@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { kstMonthRange, shiftMonth } from "@/lib/month";
+import { getStorefrontShop } from "@/lib/shop";
 
 export { kstMonthRange, kstMonthKey, shiftMonth } from "@/lib/month";
 
@@ -33,7 +34,7 @@ export type MonthlySummary = {
 export async function monthlySummary(month: string): Promise<MonthlySummary> {
   const range = kstMonthRange(month);
 
-  const [orders, settlements, settings, expenses, courierBill, fixedCosts] =
+  const [orders, settlements, shop, expenses, courierBill, fixedCosts] =
     await Promise.all([
       prisma.order.findMany({
         where: { canceledAt: null, createdAt: range },
@@ -43,7 +44,7 @@ export async function monthlySummary(month: string): Promise<MonthlySummary> {
         where: { canceledAt: null, createdAt: range },
         select: { shippingFee: true, shippingCredit: true, discount: true },
       }),
-      prisma.setting.upsert({ where: { id: 1 }, create: { id: 1 }, update: {} }),
+      getStorefrontShop(),
       prisma.expense.findMany({ where: { spentAt: range } }),
       prisma.courierBill.findUnique({ where: { month } }),
       // 그달에 실제로 돌아가고 있던 고정비만 (시작 전 · 끝난 뒤 달은 빼고)
@@ -75,7 +76,7 @@ export async function monthlySummary(month: string): Promise<MonthlySummary> {
   // 실제 청구서를 적어두면 그 금액이 우선 (포장 크기마다 요금이 달라 어림값은 부정확하다)
   const shipmentCount = settlements.length;
   const courierIsActual = courierBill !== null;
-  const courierEstimate = shipmentCount * settings.courierCost;
+  const courierEstimate = shipmentCount * (shop?.courierCost ?? 0);
   const courierCost = courierBill ? courierBill.amount : courierEstimate;
 
   const otherExpense = expenses.reduce((sum, e) => sum + e.amount, 0);

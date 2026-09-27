@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { won } from "@/lib/format";
 import { discountRate, isOnSale, sellingPrice } from "@/lib/price";
-import { getSettings } from "@/lib/settings";
+import { getStorefrontSettings } from "@/lib/shop";
 import { isSaleOpen, sortForShop, stockState, totalStock } from "@/lib/stock";
 
 const CATEGORIES = ["전체", "의류", "악세서리", "잡화"];
@@ -26,7 +26,7 @@ export default async function ShopHomePage({
       include: { variants: true },
       orderBy: [{ openedAt: "desc" }, { createdAt: "desc" }],
     }),
-    getSettings(),
+    getStorefrontSettings(),
   ]);
 
   // 연장판매 마감 시각이 지났으면 손님 화면에서는 더 이상 안 보여줌

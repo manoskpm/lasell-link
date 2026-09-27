@@ -2,13 +2,14 @@
 
 import { useActionState } from "react";
 import { addExpenseAction } from "@/app/actions/finance";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 import { EXPENSE_CATEGORIES } from "@/lib/financeCategories";
 
 export function ExpenseForm({ today }: { today: string }) {
   const [state, formAction, pending] = useActionState(addExpenseAction, null);
 
   return (
-    <form action={formAction} className="card flex flex-col gap-3">
+    <KeepValuesForm action={formAction} className="card flex flex-col gap-3">
       <p className="text-sm font-semibold">지출 기록</p>
       <p className="-mt-1 text-xs text-zinc-500">
         사입하신 날 나간 돈, 포장재, 광고비… 나간 건 다 여기에 적으시면 돼요.
@@ -79,6 +80,6 @@ export function ExpenseForm({ today }: { today: string }) {
       <button type="submit" disabled={pending} className="btn-primary">
         {pending ? "기록 중..." : "지출 기록하기"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

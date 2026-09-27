@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getAccess } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { formatDateOnly } from "@/lib/format";
+import { getPlatformSettings } from "@/lib/platformSettings";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "셀러 신청 상태" };
@@ -20,6 +21,7 @@ export default async function SellerStatusPage({
     where: { userId: user.id },
     orderBy: { id: "desc" },
   });
+  const platformSettings = await getPlatformSettings();
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,6 +42,7 @@ export default async function SellerStatusPage({
           </p>
           <SuspendReason shopId={access.shop.id} />
           <p>다시 열려면 운영자에게 연락해주세요.</p>
+          <OperatorContact settings={platformSettings} />
         </StatusCard>
       ) : access.isSeller ? (
         <StatusCard tone="green" title="셀러로 승인됐어요!">
@@ -97,6 +100,35 @@ export default async function SellerStatusPage({
       <Link href="/" className="btn-secondary">
         쇼핑몰로 돌아가기
       </Link>
+    </div>
+  );
+}
+
+function OperatorContact({
+  settings,
+}: {
+  settings: { operatorContactKakaoUrl: string | null; operatorContactPhone: string | null };
+}) {
+  const { operatorContactKakaoUrl, operatorContactPhone } = settings;
+  if (!operatorContactKakaoUrl && !operatorContactPhone) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {operatorContactKakaoUrl && (
+        <Link
+          href={operatorContactKakaoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-secondary"
+        >
+          카카오톡으로 문의하기
+        </Link>
+      )}
+      {operatorContactPhone && (
+        <Link href={`tel:${operatorContactPhone}`} className="btn-secondary">
+          {operatorContactPhone}로 전화하기
+        </Link>
+      )}
     </div>
   );
 }

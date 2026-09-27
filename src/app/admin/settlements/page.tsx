@@ -1,4 +1,4 @@
-import { requireSellerConsole } from "@/lib/access";
+import { requireOwnShop } from "@/lib/access";
 import Link from "next/link";
 import { ShipRow } from "@/components/ShipRow";
 import { StatusChip } from "@/components/StatusChip";
@@ -6,7 +6,6 @@ import { itemLine } from "@/lib/courier";
 import { kstRangeToUtc } from "@/lib/date";
 import { formatDate, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
 
 const FILTERS = [
   { key: "all", label: "전체" },
@@ -41,33 +40,30 @@ export default async function AdminSettlementsPage({
     q?: string;
   }>;
 }) {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
   const { filter = "all", from, to, q } = await searchParams;
   const createdAt = kstRangeToUtc(from, to);
   const keyword = q?.trim();
 
-  const [settlements, settings] = await Promise.all([
-    prisma.settlement.findMany({
-      where: {
-        ...statusWhere(filter),
-        ...(createdAt.gte || createdAt.lte ? { createdAt } : {}),
-        ...(keyword
-          ? {
-              OR: [
-                { buyerName: { contains: keyword } },
-                { depositorName: { contains: keyword } },
-                { buyerPhone: { contains: keyword } },
-                { trackingNumber: { contains: keyword } },
-              ],
-            }
-          : {}),
-      },
-      include: { orders: { include: { items: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-    getSettings(),
-  ]);
+  const settlements = await prisma.settlement.findMany({
+    where: {
+      ...statusWhere(filter),
+      ...(createdAt.gte || createdAt.lte ? { createdAt } : {}),
+      ...(keyword
+        ? {
+            OR: [
+              { buyerName: { contains: keyword } },
+              { depositorName: { contains: keyword } },
+              { buyerPhone: { contains: keyword } },
+              { trackingNumber: { contains: keyword } },
+            ],
+          }
+        : {}),
+    },
+    include: { orders: { include: { items: true } } },
+    orderBy: { createdAt: "desc" },
+  });
 
   const query = (params: Record<string, string | undefined>) => {
     const search = new URLSearchParams();
@@ -242,8 +238,8 @@ export default async function AdminSettlementsPage({
                       settlementId={settlement.id}
                       trackingNumber={settlement.trackingNumber}
                       shippingStatus={settlement.shippingStatus}
-                      trackingUrlTemplate={settings.trackingUrlTemplate}
-                      courierName={settings.courierName}
+                      trackingUrlTemplate={shop.courier?.trackingUrlTemplate ?? null}
+                      courierName={shop.courier?.name ?? null}
                     />
                   )}
                 </div>

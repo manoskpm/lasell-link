@@ -1,4 +1,4 @@
-import { requireSellerConsole } from "@/lib/access";
+import { requireOwnShop } from "@/lib/access";
 import Link from "next/link";
 import { Calendar } from "./Calendar";
 import { CourierBillForm } from "./CourierBillForm";
@@ -49,7 +49,7 @@ export default async function AdminFinancePage({
 }: {
   searchParams: Promise<{ month?: string; day?: string }>;
 }) {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
   const { month: monthParam, day: dayParam } = await searchParams;
   const today = todayKst();
@@ -102,19 +102,16 @@ export default async function AdminFinancePage({
   const billMonths = Array.from({ length: 6 }, (_, i) =>
     shiftMonth(lastMonth, i - 5)
   );
-  const [shipments, settings] = await Promise.all([
-    prisma.settlement.findMany({
-      where: {
-        canceledAt: null,
-        createdAt: {
-          gte: kstMonthRange(billMonths[0]).gte,
-          lt: kstMonthRange(lastMonth).lt,
-        },
+  const shipments = await prisma.settlement.findMany({
+    where: {
+      canceledAt: null,
+      createdAt: {
+        gte: kstMonthRange(billMonths[0]).gte,
+        lt: kstMonthRange(lastMonth).lt,
       },
-      select: { createdAt: true },
-    }),
-    prisma.setting.upsert({ where: { id: 1 }, create: { id: 1 }, update: {} }),
-  ]);
+    },
+    select: { createdAt: true },
+  });
 
   const shipmentsByMonth = new Map<string, number>();
   for (const s of shipments) {
@@ -133,7 +130,7 @@ export default async function AdminFinancePage({
   const estimates = new Map(
     billMonths.map((m) => [
       m,
-      (shipmentsByMonth.get(m) ?? 0) * settings.courierCost,
+      (shipmentsByMonth.get(m) ?? 0) * shop.courierCost,
     ])
   );
 
@@ -446,7 +443,7 @@ export default async function AdminFinancePage({
             평균 얼마쯤 나오는지 한 번만 적어두세요. 청구서를 안 적어도 장부는
             이 값으로 굴러갑니다.
           </p>
-          <CourierUnitForm value={settings.courierCost} />
+          <CourierUnitForm value={shop.courierCost} />
         </div>
 
         <details className="rounded-xl border border-zinc-200 p-3.5">

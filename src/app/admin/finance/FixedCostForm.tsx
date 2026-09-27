@@ -2,13 +2,14 @@
 
 import { useActionState } from "react";
 import { addFixedCostAction } from "@/app/actions/finance";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 import { FIXED_CATEGORIES } from "@/lib/financeCategories";
 
 export function FixedCostForm() {
   const [state, formAction, pending] = useActionState(addFixedCostAction, null);
 
   return (
-    <form action={formAction} className="flex flex-col gap-2 rounded-xl border border-dashed border-zinc-300 p-3.5">
+    <KeepValuesForm action={formAction} className="flex flex-col gap-2 rounded-xl border border-dashed border-zinc-300 p-3.5">
       <p className="text-sm font-semibold">고정비 추가</p>
 
       <input
@@ -43,6 +44,6 @@ export function FixedCostForm() {
       <button type="submit" disabled={pending} className="btn-secondary">
         {pending ? "등록 중..." : "고정비 등록"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

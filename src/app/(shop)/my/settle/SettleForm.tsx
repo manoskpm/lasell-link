@@ -33,6 +33,7 @@ export function SettleForm({
   shippingPlan,
   defaults,
   bankAccount,
+  bankAccountChanged,
 }: {
   orders: OrderRow[];
   coupons: CouponRow[];
@@ -54,6 +55,7 @@ export function SettleForm({
     addressDetail: string;
   };
   bankAccount: string | null;
+  bankAccountChanged?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(
     createSettlementAction,
@@ -308,9 +310,14 @@ export function SettleForm({
       <input type="hidden" name="paymentMethod" value="계좌이체" />
 
       {bankAccount && (
-        <p className="rounded-xl bg-zinc-50 px-3.5 py-3 text-sm text-zinc-600">
+        <div className="rounded-xl bg-zinc-50 px-3.5 py-3 text-sm text-zinc-600">
           입금계좌: <b className="text-zinc-900">{bankAccount}</b>
-        </p>
+          {bankAccountChanged && (
+            <p className="mt-1 text-xs font-medium text-amber-600">
+              입금 계좌가 최근에 바뀌었어요. 위 계좌가 맞는지 한 번 더 확인해주세요.
+            </p>
+          )}
+        </div>
       )}
 
       {state?.error && (

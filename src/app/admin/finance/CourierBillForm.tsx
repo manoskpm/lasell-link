@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { saveCourierBillAction } from "@/app/actions/finance";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 import { shiftMonth } from "@/lib/month";
 
 function monthText(month: string) {
@@ -37,7 +38,7 @@ export function CourierBillForm({
   const odd = guess > 0 && typed > 0 && Math.abs(typed - guess) > guess;
 
   return (
-    <form action={formAction} className="flex flex-col gap-2.5">
+    <KeepValuesForm action={formAction} className="flex flex-col gap-2.5">
       <div>
         <label className="label" htmlFor="billMonth">
           택배를 보낸 달
@@ -102,6 +103,6 @@ export function CourierBillForm({
       <button type="submit" disabled={pending} className="btn-secondary">
         {pending ? "저장 중..." : `${monthText(month)} 장부에 넣기`}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

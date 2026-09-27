@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { sellingPrice } from "@/lib/price";
-import { getSettings } from "@/lib/settings";
+import { getStorefrontSettings } from "@/lib/shop";
 import { kstRangeToUtc, todayKst } from "@/lib/date";
 
 export default async function CartPage() {
@@ -26,7 +26,7 @@ export default async function CartPage() {
       },
       include: { items: true },
     }),
-    getSettings(),
+    getStorefrontSettings(),
   ]);
 
   const total = items.reduce(

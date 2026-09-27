@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { sellingPrice } from "@/lib/price";
 import { planShipping } from "@/lib/shippingPlan";
 import type { FormState } from "./auth";
-import { storeClosedReason } from "@/lib/shop";
+import { getStorefrontShop, storeClosedReason } from "@/lib/shop";
 
 type Tx = Prisma.TransactionClient;
 
@@ -201,6 +201,9 @@ export async function createSettlementAction(
 ): Promise<FormState> {
   const user = await requireUser();
 
+  const closed = await storeClosedReason();
+  if (closed) return { error: closed };
+
   const orderIds = formData
     .getAll("orderIds")
     .map((value) => Number(value))
@@ -240,11 +243,8 @@ export async function createSettlementAction(
         0
       );
 
-      const settings = await tx.setting.upsert({
-        where: { id: 1 },
-        create: { id: 1 },
-        update: {},
-      });
+      const shop = await getStorefrontShop();
+      if (!shop) throw new Error("상점 정보를 찾을 수 없어요. 화면을 새로고침해주세요.");
 
       const coupon = couponId
         ? await tx.coupon.findUnique({ where: { id: couponId } })
@@ -256,8 +256,8 @@ export async function createSettlementAction(
       const plan = await planShipping(tx, {
         userId: user.id,
         orderIds: orders.map((order) => order.id),
-        shippingFee: settings.shippingFee,
-        freeShippingOver: settings.freeShippingOver,
+        shippingFee: shop.shippingFee,
+        freeShippingOver: shop.freeShippingOver,
       });
 
       const applied = applyCoupon({

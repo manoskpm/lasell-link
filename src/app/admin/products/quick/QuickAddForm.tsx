@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { quickCreateProductAction } from "@/app/actions/products";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 
 const CATEGORIES = ["의류", "악세서리", "잡화"];
 const SIZE_PRESETS = ["FREE", "S,M,L", "S,M,L,XL", "S,M,L,XL,XXL"];
@@ -35,8 +36,8 @@ export function QuickAddForm() {
   }, [state, router]);
 
   return (
-    <form
-      ref={formRef}
+    <KeepValuesForm
+      formRef={formRef}
       action={formAction}
       className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-4"
     >
@@ -240,6 +241,6 @@ export function QuickAddForm() {
       <button type="submit" disabled={pending} className="btn-primary text-lg">
         {pending ? "등록 중..." : "등록하고 계속"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

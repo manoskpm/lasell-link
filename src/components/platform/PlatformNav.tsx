@@ -10,6 +10,7 @@ export function PlatformNav({ pendingCount }: { pendingCount: number }) {
     { href: "/platform/applications", label: "셀러 신청", badge: pendingCount },
     { href: "/platform/sellers", label: "셀러" },
     { href: "/platform/audit", label: "기록" },
+    { href: "/platform/settings", label: "운영 방침" },
   ];
   const isActive = (href: string) =>
     href === "/platform" ? pathname === "/platform" : pathname.startsWith(href);

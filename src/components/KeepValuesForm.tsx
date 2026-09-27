@@ -9,16 +9,19 @@ import { useTransition } from "react";
 export function KeepValuesForm({
   action,
   className,
+  formRef,
   children,
 }: {
   action: (formData: FormData) => void;
   className?: string;
+  formRef?: React.Ref<HTMLFormElement>;
   children: React.ReactNode;
 }) {
   const [, startTransition] = useTransition();
 
   return (
     <form
+      ref={formRef}
       className={className}
       noValidate
       onSubmit={(event) => {

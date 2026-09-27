@@ -11,6 +11,8 @@ const GUARDS = [
   "getCurrentUser(",
   "getAccess(",
   "sellerConsoleApiGuard(",
+  "sellerConsoleShopApiGuard(",
+  "requireOwnShop(",
 ];
 
 // 로그인 전에도 불러야 하는 것만 여기에 (이유를 같이 적을 것)
@@ -63,15 +65,18 @@ for (const file of walk("src/app/api").filter((f) => f.endsWith("route.ts"))) {
   }
 }
 
-// 3) 화면: 셀러 화면은 requireSellerConsole, 운영자 화면은 requirePlatform
+// 3) 화면: 셀러 화면은 requireSellerConsole 또는 상점 정보까지 같이 주는 requireOwnShop,
+//    운영자 화면은 requirePlatform
 const pageRules = [
-  { dir: "src/app/admin", guard: "requireSellerConsole(" },
-  { dir: "src/app/platform/(console)", guard: "requirePlatform(" },
+  { dir: "src/app/admin", guards: ["requireSellerConsole(", "requireOwnShop("] },
+  { dir: "src/app/platform/(console)", guards: ["requirePlatform("] },
 ];
-for (const { dir, guard } of pageRules) {
+for (const { dir, guards } of pageRules) {
   for (const file of walk(dir).filter((f) => /(page|layout)\.tsx$/.test(f))) {
-    if (!readFileSync(file, "utf8").includes(guard)) {
-      problems.push(`화면 ${file} (${guard.slice(0, -1)} 없음)`);
+    const src = readFileSync(file, "utf8");
+    if (!guards.some((guard) => src.includes(guard))) {
+      const label = guards.map((g) => g.slice(0, -1)).join(" 또는 ");
+      problems.push(`화면 ${file} (${label} 없음)`);
     }
   }
 }

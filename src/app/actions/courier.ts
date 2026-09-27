@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSellerConsole } from "@/lib/access";
+import { requireOwnShop, requireSellerConsole } from "@/lib/access";
 import {
   detectMapping,
   FIELD_DEFS,
@@ -18,7 +18,7 @@ export async function createTemplateAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
   const name = String(formData.get("name") ?? "").trim();
   const file = formData.get("file") as File | null;
@@ -46,13 +46,14 @@ export async function createTemplateAction(
 
   const template = await prisma.courierTemplate.create({
     data: {
+      shopId: shop.id,
       name,
       filePath,
       sheetName: info.sheetName,
       headerRow: info.headerRow,
       startRow: info.headerRow + 1,
       mapping: JSON.stringify(mapping),
-      isDefault: (await prisma.courierTemplate.count()) === 0,
+      isDefault: (await prisma.courierTemplate.count({ where: { shopId: shop.id } })) === 0,
     },
   });
 
@@ -61,7 +62,7 @@ export async function createTemplateAction(
 }
 
 export async function saveTemplateAction(formData: FormData) {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
   const id = Number(formData.get("templateId"));
   const name = String(formData.get("name") ?? "").trim();
@@ -75,7 +76,7 @@ export async function saveTemplateAction(formData: FormData) {
   }
 
   await prisma.courierTemplate.update({
-    where: { id },
+    where: { id, shopId: shop.id },
     data: {
       ...(name ? { name } : {}),
       startRow,
@@ -88,8 +89,11 @@ export async function saveTemplateAction(formData: FormData) {
 }
 
 export async function setDefaultTemplateAction(templateId: number) {
-  await requireSellerConsole();
-  await prisma.courierTemplate.updateMany({ data: { isDefault: false } });
+  const { shop } = await requireOwnShop();
+  await prisma.courierTemplate.updateMany({
+    where: { shopId: shop.id },
+    data: { isDefault: false },
+  });
   await prisma.courierTemplate.update({
     where: { id: templateId },
     data: { isDefault: true },
@@ -98,8 +102,8 @@ export async function setDefaultTemplateAction(templateId: number) {
 }
 
 export async function deleteTemplateAction(templateId: number) {
-  await requireSellerConsole();
-  await prisma.courierTemplate.delete({ where: { id: templateId } });
+  const { shop } = await requireOwnShop();
+  await prisma.courierTemplate.delete({ where: { id: templateId, shopId: shop.id } });
   revalidatePath("/admin/shipping");
   redirect("/admin/shipping");
 }
@@ -182,10 +186,10 @@ export async function importTrackingAction(
 
 /// 양식 파일의 헤더를 다시 읽어 매핑 화면에 표시
 export async function loadTemplateHeaders(templateId: number) {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
-  const template = await prisma.courierTemplate.findUnique({
-    where: { id: templateId },
+  const template = await prisma.courierTemplate.findFirst({
+    where: { id: templateId, shopId: shop.id },
   });
   if (!template) return null;
 

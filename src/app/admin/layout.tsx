@@ -4,18 +4,17 @@ import { AdminSidebar, AdminTabs } from "@/components/AdminNav";
 import { AppLogoMark } from "@/components/AppLogo";
 import { ShopLogo } from "@/components/ShopLogo";
 import { APP_NAME } from "@/lib/app";
-import { getAccess, requireSellerConsole } from "@/lib/access";
-import { getSettings } from "@/lib/settings";
+import { getAccess, requireOwnShop } from "@/lib/access";
+import { getStorefrontShop } from "@/lib/shop";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSettings();
-  return { title: `${APP_NAME} 관리자 · ${settings.shopName}` };
+  const shop = await getStorefrontShop();
+  return { title: `${APP_NAME} 관리자${shop ? ` · ${shop.name}` : ""}` };
 }
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
-  const admin = await requireSellerConsole();
+  const { user: admin, shop } = await requireOwnShop();
   const { isPlatform } = await getAccess();
-  const settings = await getSettings();
 
   return (
     <div className="min-h-dvh bg-zinc-50">
@@ -38,22 +37,22 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
                   {APP_NAME} 관리자
                 </p>
                 <ShopLogo
-                  logoUrl={settings.logoUrl}
-                  shopName={settings.shopName}
+                  logoUrl={shop.logoUrl}
+                  shopName={shop.name}
                   height={24}
                   textClassName="text-base font-bold"
                 />
               </div>
             </div>
-            {settings.courierSiteUrl && (
+            {shop.courier?.siteUrl && (
               <Link
-                href={settings.courierSiteUrl}
+                href={shop.courier.siteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden chip bg-zinc-100 text-zinc-700 lg:inline-block"
               >
-                {settings.courierName ?? "택배사"} 접수사이트
-                {settings.courierLoginId ? ` (${settings.courierLoginId})` : ""}
+                {shop.courier.name} 접수사이트
+                {shop.courierLoginId ? ` (${shop.courierLoginId})` : ""}
               </Link>
             )}
           </div>

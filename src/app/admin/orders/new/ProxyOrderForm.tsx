@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createOrderForCustomerAction } from "@/app/actions/orders";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 import { optionLabel } from "@/lib/format";
 
 type Customer = {
@@ -36,8 +37,8 @@ export function ProxyOrderForm({
   const product = products.find((item) => item.id === productId);
 
   return (
-    <form
-      action={async (formData) => {
+    <KeepValuesForm
+      action={(formData) => {
         formAction(formData);
         setDone((count) => count + 1);
       }}
@@ -130,6 +131,6 @@ export function ProxyOrderForm({
       <button type="submit" disabled={pending} className="btn-primary">
         {pending ? "주문 넣는 중..." : "대리주문 넣기"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

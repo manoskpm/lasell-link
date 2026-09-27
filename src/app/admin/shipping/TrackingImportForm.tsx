@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { importTrackingAction } from "@/app/actions/courier";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 
 export function TrackingImportForm() {
   const [state, formAction, pending] = useActionState(
@@ -10,7 +11,7 @@ export function TrackingImportForm() {
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <KeepValuesForm action={formAction} className="flex flex-col gap-3">
       <input
         name="file"
         type="file"
@@ -41,6 +42,6 @@ export function TrackingImportForm() {
       <button type="submit" disabled={pending} className="btn-secondary">
         {pending ? "읽는 중..." : "운송장 엑셀 올리기"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

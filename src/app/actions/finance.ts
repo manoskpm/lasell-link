@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireSellerConsole } from "@/lib/access";
+import { requireOwnShop, requireSellerConsole } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { EXPENSE_CATEGORIES } from "@/lib/financeCategories";
 import type { FormState } from "./auth";
@@ -126,14 +126,10 @@ export async function updateCourierUnitCostAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
   const courierCost = Math.max(0, Math.round(Number(formData.get("courierCost")) || 0));
-  await prisma.setting.upsert({
-    where: { id: 1 },
-    create: { id: 1, courierCost },
-    update: { courierCost },
-  });
+  await prisma.shop.update({ where: { id: shop.id }, data: { courierCost } });
 
   revalidatePath("/admin/finance");
   return { error: undefined };

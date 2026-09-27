@@ -1,4 +1,4 @@
-import { requireSellerConsole } from "@/lib/access";
+import { requireOwnShop } from "@/lib/access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CancelOrderButton } from "@/components/CancelOrderButton";
@@ -7,27 +7,23 @@ import { ShipRow } from "@/components/ShipRow";
 import { StatusChip } from "@/components/StatusChip";
 import { formatDate, optionLabel, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
 
 export default async function AdminSettlementDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
   const { id } = await params;
-  const [settlement, settings] = await Promise.all([
-    prisma.settlement.findUnique({
-      where: { id: Number(id) },
-      include: {
-        orders: { include: { items: true } },
-        user: true,
-        coupon: true,
-      },
-    }),
-    getSettings(),
-  ]);
+  const settlement = await prisma.settlement.findUnique({
+    where: { id: Number(id) },
+    include: {
+      orders: { include: { items: true } },
+      user: true,
+      coupon: true,
+    },
+  });
 
   if (!settlement) notFound();
 
@@ -174,8 +170,8 @@ export default async function AdminSettlementDetailPage({
             settlementId={settlement.id}
             trackingNumber={settlement.trackingNumber}
             shippingStatus={settlement.shippingStatus}
-            trackingUrlTemplate={settings.trackingUrlTemplate}
-            courierName={settings.courierName}
+            trackingUrlTemplate={shop.courier?.trackingUrlTemplate ?? null}
+            courierName={shop.courier?.name ?? null}
           />
         </section>
       )}

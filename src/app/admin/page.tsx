@@ -1,4 +1,4 @@
-import { requireSellerConsole } from "@/lib/access";
+import { requireOwnShop } from "@/lib/access";
 import Link from "next/link";
 import { ShipRow } from "@/components/ShipRow";
 import { StatusChip } from "@/components/StatusChip";
@@ -6,10 +6,9 @@ import { itemLine } from "@/lib/courier";
 import { kstRangeToUtc, todayKst } from "@/lib/date";
 import { formatDate, won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
 
 export default async function AdminHomePage() {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
   const today = todayKst();
   const todayRange = kstRangeToUtc(today, today);
@@ -22,7 +21,6 @@ export default async function AdminHomePage() {
     openCount,
     soldOutCount,
     memberCount,
-    settings,
   ] = await Promise.all([
     prisma.order.findMany({
       where: { createdAt: todayRange, canceledAt: null },
@@ -46,7 +44,6 @@ export default async function AdminHomePage() {
     prisma.product.count({ where: { isActive: true, isOpen: true } }),
     prisma.productVariant.count({ where: { stock: 0 } }),
     prisma.user.count({ where: { role: "CUSTOMER", platformAccount: false } }),
-    getSettings(),
   ]);
 
   const todaySales = todayOrders.reduce(
@@ -78,7 +75,7 @@ export default async function AdminHomePage() {
         </div>
       </div>
 
-      {!settings.trackingUrlTemplate && (
+      {!shop.courier?.trackingUrlTemplate && (
         <Link
           href="/admin/settings"
           className="rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-700"
@@ -251,8 +248,8 @@ export default async function AdminHomePage() {
                   settlementId={settlement.id}
                   trackingNumber={settlement.trackingNumber}
                   shippingStatus={settlement.shippingStatus}
-                  trackingUrlTemplate={settings.trackingUrlTemplate}
-                  courierName={settings.courierName}
+                  trackingUrlTemplate={shop.courier?.trackingUrlTemplate ?? null}
+                  courierName={shop.courier?.name ?? null}
                 />
               </div>
             ))}

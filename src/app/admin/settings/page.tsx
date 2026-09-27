@@ -1,11 +1,18 @@
-import { requireSellerConsole } from "@/lib/access";
-import { getSettings } from "@/lib/settings";
+import { requireOwnShop } from "@/lib/access";
+import { getPlatformSettings } from "@/lib/platformSettings";
+import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "./SettingsForm";
 
 export default async function AdminSettingsPage() {
-  await requireSellerConsole();
+  const { shop } = await requireOwnShop();
 
-  const settings = await getSettings();
+  const [couriers, platformSettings] = await Promise.all([
+    prisma.courier.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+    }),
+    getPlatformSettings(),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -16,26 +23,33 @@ export default async function AdminSettingsPage() {
         </p>
       </div>
       <SettingsForm
-        logoUrl={settings.logoUrl}
+        logoUrl={shop.logoUrl}
+        couriers={couriers.map((c) => ({ id: c.id, name: c.name, siteUrl: c.siteUrl, trackingUrlTemplate: c.trackingUrlTemplate }))}
+        lowStockAtRange={{
+          min: platformSettings.lowStockAtMin,
+          max: platformSettings.lowStockAtMax,
+        }}
         defaults={{
-          shopName: settings.shopName,
-          ownerName: settings.ownerName ?? "",
-          contactPhone: settings.contactPhone ?? "",
-          kakaoChannelUrl: settings.kakaoChannelUrl ?? "",
-          chatUrl: settings.chatUrl ?? "",
-          bankAccount: settings.bankAccount ?? "",
-          noticeText: settings.noticeText ?? "",
-          senderZipcode: settings.senderZipcode ?? "",
-          senderAddress: settings.senderAddress ?? "",
-          senderAddressDetail: settings.senderAddressDetail ?? "",
-          courierName: settings.courierName ?? "",
-          courierSiteUrl: settings.courierSiteUrl ?? "",
-          courierLoginId: settings.courierLoginId ?? "",
-          courierCustomerCode: settings.courierCustomerCode ?? "",
-          trackingUrlTemplate: settings.trackingUrlTemplate ?? "",
-          shippingFee: String(settings.shippingFee),
-          freeShippingOver: String(settings.freeShippingOver),
-          courierCost: String(settings.courierCost),
+          shopName: shop.name,
+          ownerName: shop.ownerName ?? "",
+          contactPhone: shop.contactPhone ?? "",
+          kakaoChannelUrl: shop.kakaoChannelUrl ?? "",
+          chatUrl: shop.chatUrl ?? "",
+          bankAccount: shop.bankAccount ?? "",
+          noticeText: shop.noticeText ?? "",
+          senderZipcode: shop.senderZipcode ?? "",
+          senderAddress: shop.senderAddress ?? "",
+          senderAddressDetail: shop.senderAddressDetail ?? "",
+          courierId: shop.courierId ? String(shop.courierId) : "",
+          courierLoginId: shop.courierLoginId ?? "",
+          courierCustomerCode: shop.courierCustomerCode ?? "",
+          shippingFee: String(shop.shippingFee),
+          freeShippingOver: String(shop.freeShippingOver),
+          courierCost: String(shop.courierCost),
+          lowStockAt: String(shop.lowStockAt),
+          paymentDueRule: shop.paymentDueRule,
+          paymentDueHours: String(shop.paymentDueHours),
+          paymentDueFixedTime: shop.paymentDueFixedTime ?? "18:00",
         }}
       />
     </div>

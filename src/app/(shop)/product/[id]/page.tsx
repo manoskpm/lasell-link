@@ -4,7 +4,7 @@ import { VariantPicker } from "@/components/VariantPicker";
 import { won } from "@/lib/format";
 import { discountRate, isOnSale, sellingPrice } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
+import { getStorefrontSettings } from "@/lib/shop";
 import { isSaleOpen } from "@/lib/stock";
 
 export default async function ProductDetailPage({
@@ -18,7 +18,7 @@ export default async function ProductDetailPage({
       where: { id: Number(id) },
       include: { variants: { orderBy: { id: "asc" } } },
     }),
-    getSettings(),
+    getStorefrontSettings(),
   ]);
 
   if (!product || !product.isActive || !product.isOpen) notFound();

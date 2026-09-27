@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sellerConsoleApiGuard } from "@/lib/access";
+import { sellerConsoleShopApiGuard } from "@/lib/access";
 import {
   fillTemplate,
   itemLine,
@@ -8,13 +8,13 @@ import {
 } from "@/lib/courier";
 import { todayKst } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/settings";
 import { readPrivateFile } from "@/lib/upload";
 import { contentDisposition } from "@/lib/xlsx";
 
 export async function POST(request: Request) {
-  const denied = await sellerConsoleApiGuard();
-  if (denied) return denied;
+  const guard = await sellerConsoleShopApiGuard();
+  if (guard instanceof Response) return guard;
+  const { shop } = guard;
 
   const formData = await request.formData();
   const templateId = Number(formData.get("templateId"));
@@ -36,9 +36,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const [template, settings, settlements] = await Promise.all([
-    prisma.courierTemplate.findUnique({ where: { id: templateId } }),
-    getSettings(),
+  const [template, settlements] = await Promise.all([
+    prisma.courierTemplate.findFirst({
+      where: { id: templateId, shopId: shop.id },
+    }),
     prisma.settlement.findMany({
       where: { id: { in: settlementIds } },
       include: { orders: { include: { items: true } } },
@@ -67,10 +68,10 @@ export async function POST(request: Request) {
       productName: items.map(itemLine).join("\n"),
       quantity: items.reduce((sum, item) => sum + item.quantity, 0),
       memo: settlement.memo ?? "",
-      senderName: settings.ownerName || settings.shopName,
-      senderPhone: settings.contactPhone ?? "",
-      senderZipcode: settings.senderZipcode ?? "",
-      senderAddress: [settings.senderAddress, settings.senderAddressDetail]
+      senderName: shop.ownerName || shop.name,
+      senderPhone: shop.contactPhone ?? "",
+      senderZipcode: shop.senderZipcode ?? "",
+      senderAddress: [shop.senderAddress, shop.senderAddressDetail]
         .filter(Boolean)
         .join(" "),
     };

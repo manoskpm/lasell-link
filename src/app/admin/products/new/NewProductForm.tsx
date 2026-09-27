@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createProductAction } from "@/app/actions/products";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 
 const CATEGORIES = ["의류", "악세서리", "잡화"];
 const SIZE_PRESETS = ["FREE", "S,M,L", "S,M,L,XL", "S,M,L,XL,XXL", "44,55,66"];
@@ -16,7 +17,7 @@ export function NewProductForm() {
   const [colors, setColors] = useState("");
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <KeepValuesForm action={formAction} className="flex flex-col gap-4">
       <div>
         <label className="label" htmlFor="name">
           상품명 *
@@ -238,6 +239,6 @@ export function NewProductForm() {
       <button type="submit" disabled={pending} className="btn-primary">
         {pending ? "등록 중..." : "상품 등록하기"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

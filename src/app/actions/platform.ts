@@ -239,6 +239,68 @@ export async function suspendShopAction(
   return { error: undefined };
 }
 
+// ─── 운영 방침 ────────────────────────────────────────────────
+
+/// 품절임박 기준 허용 범위 · 셀러 신청 접수 여부 · 운영자 연락처
+export async function updatePlatformSettingsAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const operator = await requirePlatform();
+
+  const acceptingApplications = formData.get("acceptingApplications") === "on";
+  const lowStockAtMin = Number(formData.get("lowStockAtMin"));
+  const lowStockAtMax = Number(formData.get("lowStockAtMax"));
+  const operatorContactKakaoUrl =
+    String(formData.get("operatorContactKakaoUrl") ?? "").trim() || null;
+  const operatorContactPhone =
+    String(formData.get("operatorContactPhone") ?? "").trim() || null;
+
+  if (!Number.isInteger(lowStockAtMin) || lowStockAtMin < 1) {
+    return {
+      error: "품절임박 최소 기준은 1개 이상 숫자로 적어주세요.",
+      field: "lowStockAtMin",
+    };
+  }
+  if (!Number.isInteger(lowStockAtMax) || lowStockAtMax < lowStockAtMin) {
+    return {
+      error: "품절임박 최대 기준은 최소 기준보다 크거나 같아야 해요.",
+      field: "lowStockAtMax",
+    };
+  }
+
+  await prisma.platformSetting.upsert({
+    where: { id: 1 },
+    create: {
+      id: 1,
+      acceptingApplications,
+      lowStockAtMin,
+      lowStockAtMax,
+      operatorContactKakaoUrl,
+      operatorContactPhone,
+    },
+    update: {
+      acceptingApplications,
+      lowStockAtMin,
+      lowStockAtMax,
+      operatorContactKakaoUrl,
+      operatorContactPhone,
+    },
+  });
+
+  await recordAudit({
+    actorUserId: operator.id,
+    action: "PLATFORM_SETTINGS_UPDATE",
+    targetType: "PlatformSetting",
+    targetId: 1,
+  });
+
+  revalidatePath("/platform/settings");
+  revalidatePath("/seller/apply");
+  revalidatePath("/seller/status");
+  return { error: undefined };
+}
+
 export async function resumeShopAction(shopId: number): Promise<FormState> {
   const operator = await requirePlatform();
 

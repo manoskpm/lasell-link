@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createTemplateAction } from "@/app/actions/courier";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 
 export function NewTemplateForm() {
   const [state, formAction, pending] = useActionState(
@@ -10,7 +11,7 @@ export function NewTemplateForm() {
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <KeepValuesForm action={formAction} className="flex flex-col gap-4">
       <div>
         <label className="label" htmlFor="name">
           양식 이름 *
@@ -51,6 +52,6 @@ export function NewTemplateForm() {
       <button type="submit" disabled={pending} className="btn-primary">
         {pending ? "읽는 중..." : "올리고 칸 확인하기"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }
