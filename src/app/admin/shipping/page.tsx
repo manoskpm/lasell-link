@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { TrackingImportForm } from "./TrackingImportForm";
@@ -6,6 +7,8 @@ import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminShippingPage() {
+  await requireSellerConsole();
+
   const [templates, settlements] = await Promise.all([
     prisma.courierTemplate.findMany({ orderBy: [{ isDefault: "desc" }, { id: "asc" }] }),
     prisma.settlement.findMany({

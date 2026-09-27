@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { ShipRow } from "@/components/ShipRow";
 import { StatusChip } from "@/components/StatusChip";
@@ -8,6 +9,8 @@ import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 
 export default async function AdminHomePage() {
+  await requireSellerConsole();
+
   const today = todayKst();
   const todayRange = kstRangeToUtc(today, today);
 
@@ -42,7 +45,7 @@ export default async function AdminHomePage() {
     }),
     prisma.product.count({ where: { isActive: true, isOpen: true } }),
     prisma.productVariant.count({ where: { stock: 0 } }),
-    prisma.user.count({ where: { role: "CUSTOMER" } }),
+    prisma.user.count({ where: { role: "CUSTOMER", platformAccount: false } }),
     getSettings(),
   ]);
 

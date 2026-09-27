@@ -1,15 +1,15 @@
-import { getCurrentUser } from "@/lib/auth";
+import { sellerConsoleApiGuard } from "@/lib/access";
 import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { buildSheet, xlsxResponse } from "@/lib/xlsx";
 
 export async function GET() {
-  const user = await getCurrentUser();
-  if (user?.role !== "ADMIN") {
-    return new Response("권한이 없어요.", { status: 403 });
-  }
+  const denied = await sellerConsoleApiGuard();
+  if (denied) return denied;
 
+  // 운영자 계정은 셀러의 회원 목록에 나오지 않게 뺀다 (운영자 아이디 노출 방지)
   const customers = await prisma.user.findMany({
+    where: { platformAccount: false },
     include: { orders: { include: { items: true } } },
     orderBy: { createdAt: "desc" },
   });
@@ -23,7 +23,7 @@ export async function GET() {
     address: [customer.address, customer.addressDetail]
       .filter(Boolean)
       .join(" "),
-    role: customer.role === "ADMIN" ? "관리자" : "일반회원",
+    role: customer.role === "SELLER" ? "셀러" : "일반회원",
     createdAt: formatDate(customer.createdAt),
     orderCount: customer.orders.length,
     totalSpent: customer.orders.reduce(

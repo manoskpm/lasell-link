@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireSellerConsole } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { saveUploadedImage } from "@/lib/upload";
 import type { FormState } from "./auth";
@@ -15,7 +15,7 @@ export async function updateSettingsAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const shopName = String(formData.get("shopName") ?? "").trim();
   if (!shopName) return { error: "상호(브랜드명)를 입력해주세요." };

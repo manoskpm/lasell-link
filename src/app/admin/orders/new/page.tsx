@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { ProxyOrderForm } from "./ProxyOrderForm";
 import { won } from "@/lib/format";
@@ -5,9 +6,11 @@ import { sellingPrice } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminNewOrderPage() {
+  await requireSellerConsole();
+
   const [customers, products] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "CUSTOMER" },
+      where: { role: "CUSTOMER", platformAccount: false },
       orderBy: [{ followedAt: "desc" }, { name: "asc" }],
     }),
     prisma.product.findMany({

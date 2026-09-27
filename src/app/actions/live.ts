@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireSellerConsole } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { planShipping } from "@/lib/shippingPlan";
 import { applyCoupon } from "@/lib/coupon";
@@ -39,7 +39,7 @@ function kstDeadline(preset: SalePreset) {
 
 /// 방송은 끝났지만 포장 전까지 계속 팔기. 마감 시각을 정해두면 손님 화면에 안내가 뜸
 export async function startExtendedSaleAction(preset: SalePreset) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const when = kstDeadline(preset);
   if (when.getTime() <= Date.now()) {
@@ -58,7 +58,7 @@ export async function startExtendedSaleAction(preset: SalePreset) {
 
 /// 연장판매를 취소하고 평소 상태로
 export async function cancelExtendedSaleAction() {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.setting.upsert({
     where: { id: 1 },
     create: { id: 1 },
@@ -71,7 +71,7 @@ export async function cancelExtendedSaleAction() {
 /// 판매를 마감하면서, 아직 배송으로 안 넘어간 구매분을 손님별로 묶어 배송 대기로 넘김.
 /// 손님은 방송 중에 사기만 하면 되고, 배송 요청을 따로 누를 필요가 없음.
 export async function closeBroadcastAction(): Promise<CloseBroadcastResult> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   // 1) 오픈중인 상품 전부 마감
   const closed = await prisma.product.updateMany({

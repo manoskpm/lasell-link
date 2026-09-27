@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+import { sellerConsoleApiGuard } from "@/lib/access";
 import { itemLine } from "@/lib/courier";
 import { kstRangeToUtc } from "@/lib/date";
 import { formatDate } from "@/lib/format";
@@ -6,10 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { buildSheet, xlsxResponse } from "@/lib/xlsx";
 
 export async function GET(request: Request) {
-  const user = await getCurrentUser();
-  if (user?.role !== "ADMIN") {
-    return new Response("권한이 없어요.", { status: 403 });
-  }
+  const denied = await sellerConsoleApiGuard();
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const from = url.searchParams.get("from") ?? undefined;

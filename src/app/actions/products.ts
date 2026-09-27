@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requireSellerConsole } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { saveUploadedImage } from "@/lib/upload";
 import type { FormState } from "./auth";
@@ -33,7 +33,7 @@ export async function createProductAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const name = String(formData.get("name") ?? "").trim();
   const price = Number(formData.get("price") ?? 0);
@@ -83,7 +83,7 @@ export async function updateProductAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const productId = Number(formData.get("productId"));
   const name = String(formData.get("name") ?? "").trim();
@@ -125,7 +125,7 @@ export async function addVariantAction(
   color: string,
   stock: number
 ) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const cleanSize = size.trim() || null;
   const cleanColor = color.trim() || null;
@@ -149,7 +149,7 @@ export async function addVariantAction(
 }
 
 export async function deleteVariantAction(variantId: number) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const count = await prisma.productVariant.count({
     where: { product: { variants: { some: { id: variantId } } } },
@@ -168,7 +168,7 @@ export async function quickCreateProductAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const name = String(formData.get("name") ?? "").trim();
   const price = Number(formData.get("price") ?? 0);
@@ -212,7 +212,7 @@ export async function quickCreateProductAction(
 }
 
 export async function updateStockAction(formData: FormData) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const productId = Number(formData.get("productId"));
 
@@ -238,7 +238,7 @@ export async function toggleProductActiveAction(
   productId: number,
   isActive: boolean
 ) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.product.update({
     where: { id: productId },
     data: { isActive },
@@ -248,7 +248,7 @@ export async function toggleProductActiveAction(
 
 /// 라이브 중 상품 공개/마감. 미리 등록해둔 상품을 방송 순서대로 하나씩 오픈
 export async function setProductOpenAction(productId: number, isOpen: boolean) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   await prisma.product.update({
     where: { id: productId },
@@ -263,7 +263,7 @@ export async function setProductOpenAction(productId: number, isOpen: boolean) {
 
 /// 방송 끝나고 오픈중인 상품을 한 번에 내림
 export async function closeAllProductsAction() {
-  await requireAdmin();
+  await requireSellerConsole();
 
   await prisma.product.updateMany({
     where: { isOpen: true },
@@ -275,7 +275,7 @@ export async function closeAllProductsAction() {
 }
 
 export async function deleteProductAction(productId: number) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.product.delete({ where: { id: productId } });
   revalidatePath("/", "layout");
   redirect("/admin/products");

@@ -71,7 +71,11 @@ model User {
   zipcode       String?
   address       String?
   addressDetail String?
-  role          String    @default("CUSTOMER") // CUSTOMER | ADMIN
+  role          String    @default("CUSTOMER") // CUSTOMER | SELLER (운영자는 DB 역할이 아니라 아래 조건으로 판단)
+  /// /platform/setup(1회용 설치 코드)으로 만든 계정만 true.
+  /// 운영자 = 이 값이 true 이면서 로그인 아이디가 환경 비밀값 PLATFORM_LOGIN_IDS 에 있을 때.
+  /// 비밀값에 아이디를 나중에 추가해도, 그 아이디를 먼저 쓰던 손님이 운영자가 되지 않게 막는 장치.
+  platformAccount Boolean @default(false)
   /// 다음 배송에 쓰겠다고 골라둔 쿠폰. 배송으로 넘어갈 때 적용되고 비워짐
   pendingCouponId Int?
   followedAt    DateTime? // 단골 등록일. null이면 단골 아님

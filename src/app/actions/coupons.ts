@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { requireSellerConsole } from "@/lib/access";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { FormState } from "./auth";
 
@@ -11,7 +12,7 @@ export async function createCouponAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "AMOUNT");
@@ -44,7 +45,7 @@ export async function toggleCouponActiveAction(
   couponId: number,
   isActive: boolean
 ) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.coupon.update({ where: { id: couponId }, data: { isActive } });
   revalidatePath("/admin/coupons");
   revalidatePath("/my/settle");
@@ -53,7 +54,7 @@ export async function toggleCouponActiveAction(
 
 /// 이미 사용된 쿠폰은 지우면 정산 기록이 깨지니, 사용 이력이 없을 때만 삭제
 export async function deleteCouponAction(couponId: number) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const used = await prisma.settlement.count({ where: { couponId } });
   if (used > 0) {

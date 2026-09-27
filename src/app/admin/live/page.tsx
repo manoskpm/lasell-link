@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Image from "next/image";
 import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -13,6 +14,8 @@ import { getSettings } from "@/lib/settings";
 import { ACTIVE_WINDOW_MS } from "@/app/api/presence/route";
 
 export default async function AdminLivePage() {
+  await requireSellerConsole();
+
   const today = todayKst();
 
   const [products, recentOrders, settings] = await Promise.all([
@@ -63,9 +66,10 @@ export default async function AdminLivePage() {
   const profit = sales - cost - courierCost - couponDiscount;
 
   // 사장님이 '쇼핑몰 보기'로 자기 화면을 열어둔 것은 손님으로 세지 않음
+  // 셀러·운영자 본인은 접속자 수에서 뺀다
   const adminIds = (
     await prisma.user.findMany({
-      where: { role: "ADMIN" },
+      where: { OR: [{ role: "SELLER" }, { platformAccount: true }] },
       select: { id: true },
     })
   ).map((admin) => admin.id);

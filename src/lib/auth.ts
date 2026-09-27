@@ -70,9 +70,4 @@ export async function requireUser(redirectTo = "/login") {
   return user;
 }
 
-export async function requireAdmin() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (user.role !== "ADMIN") redirect("/");
-  return user;
-}
+// 셀러·운영자 권한 검사는 src/lib/access.ts 에 있음 (requireSellerConsole / requirePlatform)

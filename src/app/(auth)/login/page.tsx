@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { homePathFor } from "@/lib/access";
 import { getCurrentUser } from "@/lib/auth";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage() {
   const user = await getCurrentUser();
-  if (user) redirect(user.role === "ADMIN" ? "/admin" : "/");
+  if (user) redirect(homePathFor(user));
 
   return (
     <div className="flex flex-col gap-6">

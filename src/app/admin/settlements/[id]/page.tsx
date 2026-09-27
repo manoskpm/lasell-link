@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CancelOrderButton } from "@/components/CancelOrderButton";
@@ -13,6 +14,8 @@ export default async function AdminSettlementDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireSellerConsole();
+
   const { id } = await params;
   const [settlement, settings] = await Promise.all([
     prisma.settlement.findUnique({

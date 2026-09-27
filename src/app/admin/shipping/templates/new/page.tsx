@@ -1,6 +1,9 @@
+import { requireSellerConsole } from "@/lib/access";
 import { NewTemplateForm } from "./NewTemplateForm";
 
-export default function NewTemplatePage() {
+export default async function NewTemplatePage() {
+  await requireSellerConsole();
+
   return (
     <div className="flex flex-col gap-4">
       <div>

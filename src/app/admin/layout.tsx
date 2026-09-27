@@ -4,7 +4,7 @@ import { AdminSidebar, AdminTabs } from "@/components/AdminNav";
 import { AppLogoMark } from "@/components/AppLogo";
 import { ShopLogo } from "@/components/ShopLogo";
 import { APP_NAME } from "@/lib/app";
-import { requireAdmin } from "@/lib/auth";
+import { getAccess, requireSellerConsole } from "@/lib/access";
 import { getSettings } from "@/lib/settings";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,11 +13,21 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
-  const admin = await requireAdmin();
+  const admin = await requireSellerConsole();
+  const { isPlatform } = await getAccess();
   const settings = await getSettings();
 
   return (
     <div className="min-h-dvh bg-zinc-50">
+      {isPlatform && (
+        <div className="bg-zinc-900 px-4 py-1.5 text-center text-xs text-white">
+          운영자로 보는 중이에요 · 여기서 바꾸는 내용은 셀러 상점에 그대로
+          반영돼요{" "}
+          <Link href="/platform" className="ml-2 font-semibold underline">
+            운영자 화면으로
+          </Link>
+        </div>
+      )}
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 px-4 pb-2 pt-3 backdrop-blur lg:px-8 lg:pb-3">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between">
           <div className="flex items-center gap-3">

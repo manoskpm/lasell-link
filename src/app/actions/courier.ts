@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requireSellerConsole } from "@/lib/access";
 import {
   detectMapping,
   FIELD_DEFS,
@@ -18,7 +18,7 @@ export async function createTemplateAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const name = String(formData.get("name") ?? "").trim();
   const file = formData.get("file") as File | null;
@@ -61,7 +61,7 @@ export async function createTemplateAction(
 }
 
 export async function saveTemplateAction(formData: FormData) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const id = Number(formData.get("templateId"));
   const name = String(formData.get("name") ?? "").trim();
@@ -88,7 +88,7 @@ export async function saveTemplateAction(formData: FormData) {
 }
 
 export async function setDefaultTemplateAction(templateId: number) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.courierTemplate.updateMany({ data: { isDefault: false } });
   await prisma.courierTemplate.update({
     where: { id: templateId },
@@ -98,7 +98,7 @@ export async function setDefaultTemplateAction(templateId: number) {
 }
 
 export async function deleteTemplateAction(templateId: number) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.courierTemplate.delete({ where: { id: templateId } });
   revalidatePath("/admin/shipping");
   redirect("/admin/shipping");
@@ -114,7 +114,7 @@ export async function importTrackingAction(
   _prev: ImportState,
   formData: FormData
 ): Promise<ImportState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
@@ -182,7 +182,7 @@ export async function importTrackingAction(
 
 /// 양식 파일의 헤더를 다시 읽어 매핑 화면에 표시
 export async function loadTemplateHeaders(templateId: number) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const template = await prisma.courierTemplate.findUnique({
     where: { id: templateId },

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { logoutAction } from "@/app/actions/auth";
 import { AppLogo } from "@/components/AppLogo";
+import { getAccess } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { ProfileForm } from "./ProfileForm";
 
 export default async function MyPage() {
   const user = await requireUser("/login");
+  const access = await getAccess();
 
   return (
     <div className="flex flex-col gap-5">
@@ -14,9 +16,14 @@ export default async function MyPage() {
         <p className="mt-0.5 text-sm text-zinc-500">{user.loginId}</p>
       </div>
 
-      {user.role === "ADMIN" && (
+      {access.isPlatform && (
+        <Link href="/platform" className="btn-secondary">
+          운영자 화면으로 이동
+        </Link>
+      )}
+      {access.canUseSellerConsole && (
         <Link href="/admin" className="btn-secondary">
-          관리자 페이지로 이동
+          셀러 화면으로 이동
         </Link>
       )}
 

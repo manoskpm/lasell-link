@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { ShipRow } from "@/components/ShipRow";
 import { StatusChip } from "@/components/StatusChip";
@@ -40,6 +41,8 @@ export default async function AdminSettlementsPage({
     q?: string;
   }>;
 }) {
+  await requireSellerConsole();
+
   const { filter = "all", from, to, q } = await searchParams;
   const createdAt = kstRangeToUtc(from, to);
   const keyword = q?.trim();

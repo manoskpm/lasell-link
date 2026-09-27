@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { requireSellerConsole } from "@/lib/access";
+import { requireUser } from "@/lib/auth";
 import { applyCoupon } from "@/lib/coupon";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -310,7 +311,7 @@ export async function updatePaymentStatusAction(
   settlementId: number,
   paymentStatus: string
 ) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.settlement.update({
     where: { id: settlementId },
     data: { paymentStatus },
@@ -322,7 +323,7 @@ export async function updateShippingStatusAction(
   settlementId: number,
   shippingStatus: string
 ) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.settlement.update({
     where: { id: settlementId },
     data: { shippingStatus },
@@ -335,7 +336,7 @@ export async function markShippedAction(
   settlementId: number,
   trackingNumber: string
 ) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const tracking = trackingNumber.replace(/\s/g, "");
   if (!tracking) return { error: "운송장번호를 입력해주세요." };
@@ -355,7 +356,7 @@ export async function markShippedAction(
 
 /// 주문 취소. 아직 발송 전이면 재고를 원래대로 되돌림
 export async function cancelOrderAction(orderId: number, reason: string) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -399,7 +400,7 @@ export async function cancelOrderAction(orderId: number, reason: string) {
 
 /// 취소한 주문을 되살림 (실수로 취소한 경우)
 export async function restoreOrderAction(orderId: number) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -441,7 +442,7 @@ export async function cancelSettlementAction(
   settlementId: number,
   reason: string
 ) {
-  await requireAdmin();
+  await requireSellerConsole();
 
   await prisma.$transaction(async (tx) => {
     await tx.order.updateMany({
@@ -467,7 +468,7 @@ export async function createOrderForCustomerAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const userId = Number(formData.get("userId"));
   const variantId = Number(formData.get("variantId"));

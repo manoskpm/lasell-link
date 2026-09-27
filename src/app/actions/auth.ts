@@ -9,6 +9,7 @@ import {
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
+import { homePathFor, isPlatformLoginId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 
 export type FormState = { error?: string } | null;
@@ -33,11 +34,13 @@ export async function signupAction(
     return { error: "비밀번호는 6자 이상으로 만들어주세요." };
   }
 
+  // 운영자용으로 예약된 아이디는 일반 가입으로 만들 수 없다 (이유는 알려주지 않음)
+  if (isPlatformLoginId(loginId)) {
+    return { error: "사용할 수 없는 아이디예요. 다른 아이디를 골라주세요." };
+  }
+
   const exists = await prisma.user.findUnique({ where: { loginId } });
   if (exists) return { error: "이미 사용중인 아이디예요." };
-
-  // 첫 번째 가입자는 운영자(관리자) 계정이 됩니다.
-  const isFirstUser = (await prisma.user.count()) === 0;
 
   const user = await prisma.user.create({
     data: {
@@ -48,12 +51,13 @@ export async function signupAction(
       zipcode,
       address,
       addressDetail,
-      role: isFirstUser ? "ADMIN" : "CUSTOMER",
+      // 가입만으로는 누구도 셀러나 운영자가 될 수 없다. 셀러는 신청 → 운영자 승인으로만.
+      role: "CUSTOMER",
     },
   });
 
   await createSession(user.id);
-  redirect(user.role === "ADMIN" ? "/admin" : "/");
+  redirect("/");
 }
 
 export async function loginAction(
@@ -69,7 +73,7 @@ export async function loginAction(
   }
 
   await createSession(user.id);
-  redirect(user.role === "ADMIN" ? "/admin" : "/");
+  redirect(homePathFor(user));
 }
 
 export async function logoutAction() {

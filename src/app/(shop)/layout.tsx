@@ -5,7 +5,7 @@ import { PresencePing } from "@/components/PresencePing";
 import { ContactButton } from "@/components/ContactButton";
 import { ShopLogo } from "@/components/ShopLogo";
 import { getCartCount } from "@/app/actions/cart";
-import { getCurrentUser } from "@/lib/auth";
+import { getAccess } from "@/lib/access";
 import { getSettings } from "@/lib/settings";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,8 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ShopLayout({ children }: LayoutProps<"/">) {
-  const [user, settings] = await Promise.all([getCurrentUser(), getSettings()]);
-  const cartCount = user ? await getCartCount(user.id) : 0;
+  const [access, settings] = await Promise.all([getAccess(), getSettings()]);
+  const user = access.user;
+  const cartCount = await getCartCount();
 
   return (
     <div className="relative mx-auto min-h-dvh w-full max-w-[480px] bg-white pb-28">
@@ -27,10 +28,16 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
           <ShopLogo logoUrl={settings.logoUrl} shopName={settings.shopName} />
         </Link>
         <div className="flex items-center gap-3 text-sm">
-          {user?.role === "ADMIN" && (
-            <Link href="/admin" className="chip bg-zinc-900 text-white">
-              관리자
+          {access.isPlatform ? (
+            <Link href="/platform" className="chip bg-zinc-900 text-white">
+              운영자
             </Link>
+          ) : (
+            access.canUseSellerConsole && (
+              <Link href="/admin" className="chip bg-zinc-900 text-white">
+                셀러 화면
+              </Link>
+            )
           )}
           {user ? (
             <span className="text-zinc-500">{user.name}님</span>

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireSellerConsole } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { EXPENSE_CATEGORIES } from "@/lib/financeCategories";
 import type { FormState } from "./auth";
@@ -11,7 +11,7 @@ export async function addExpenseAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const amount = Math.round(Number(formData.get("amount")) || 0);
   const spentAtRaw = String(formData.get("spentAt") ?? "").trim();
@@ -40,7 +40,7 @@ export async function addExpenseAction(
 }
 
 export async function deleteExpenseAction(expenseId: number) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.expense.delete({ where: { id: expenseId } });
   revalidatePath("/admin/finance");
   return { ok: true };
@@ -51,7 +51,7 @@ export async function addFixedCostAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const name = String(formData.get("name") ?? "").trim();
   const amount = Math.round(Number(formData.get("amount")) || 0);
@@ -68,7 +68,7 @@ export async function addFixedCostAction(
 
 /// 고정비를 끄거나 다시 켬. 끄면 그 달부터 반영되지 않음
 export async function toggleFixedCostAction(id: number, isActive: boolean) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.fixedCost.update({
     where: { id },
     data: { isActive, endedAt: isActive ? null : new Date() },
@@ -78,7 +78,7 @@ export async function toggleFixedCostAction(id: number, isActive: boolean) {
 }
 
 export async function deleteFixedCostAction(id: number) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.fixedCost.delete({ where: { id } });
   revalidatePath("/admin/finance");
   return { ok: true };
@@ -91,7 +91,7 @@ export async function saveCourierBillAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const month = String(formData.get("month") ?? "").trim();
   const amount = Math.round(Number(formData.get("amount")) || 0);
@@ -115,7 +115,7 @@ export async function saveCourierBillAction(
 }
 
 export async function deleteCourierBillAction(month: string) {
-  await requireAdmin();
+  await requireSellerConsole();
   await prisma.courierBill.deleteMany({ where: { month } });
   revalidatePath("/admin/finance");
   return { ok: true };
@@ -126,7 +126,7 @@ export async function updateCourierUnitCostAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSellerConsole();
 
   const courierCost = Math.max(0, Math.round(Number(formData.get("courierCost")) || 0));
   await prisma.setting.upsert({

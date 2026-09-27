@@ -1,9 +1,12 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatDate, won } from "@/lib/format";
 import { QuickAddForm } from "./QuickAddForm";
 
 export default async function QuickAddPage() {
+  await requireSellerConsole();
+
   const recent = await prisma.product.findMany({
     include: { variants: true },
     orderBy: { createdAt: "desc" },

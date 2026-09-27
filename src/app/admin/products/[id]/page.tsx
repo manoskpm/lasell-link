@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateStockAction } from "@/app/actions/products";
@@ -14,6 +15,8 @@ export default async function AdminProductDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireSellerConsole();
+
   const { id } = await params;
   const product = await prisma.product.findUnique({
     where: { id: Number(id) },

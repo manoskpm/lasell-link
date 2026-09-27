@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -13,6 +14,8 @@ export default async function TemplateMappingPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireSellerConsole();
+
   const { id } = await params;
   const [loaded, settings] = await Promise.all([
     loadTemplateHeaders(Number(id)),

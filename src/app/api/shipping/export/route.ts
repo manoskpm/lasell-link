@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { sellerConsoleApiGuard } from "@/lib/access";
 import {
   fillTemplate,
   itemLine,
@@ -13,7 +13,8 @@ import { readPrivateFile } from "@/lib/upload";
 import { contentDisposition } from "@/lib/xlsx";
 
 export async function POST(request: Request) {
-  await requireAdmin();
+  const denied = await sellerConsoleApiGuard();
+  if (denied) return denied;
 
   const formData = await request.formData();
   const templateId = Number(formData.get("templateId"));

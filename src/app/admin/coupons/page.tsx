@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import { CouponForm } from "./CouponForm";
 import { CouponToggle } from "@/components/CouponToggle";
 import { DeleteCouponButton } from "@/components/DeleteCouponButton";
@@ -6,6 +7,8 @@ import { formatDateOnly } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminCouponsPage() {
+  await requireSellerConsole();
+
   const coupons = await prisma.coupon.findMany({
     include: { _count: { select: { settlements: true } } },
     orderBy: { createdAt: "desc" },

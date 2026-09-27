@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusChip } from "@/components/StatusChip";
@@ -9,6 +10,8 @@ export default async function AdminOrderDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireSellerConsole();
+
   const { id } = await params;
   const order = await prisma.order.findUnique({
     where: { id: Number(id) },

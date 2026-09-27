@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Image from "next/image";
 import Link from "next/link";
 import { OpenToggle } from "@/components/OpenToggle";
@@ -6,6 +7,8 @@ import { won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminProductsPage() {
+  await requireSellerConsole();
+
   const products = await prisma.product.findMany({
     include: { variants: true },
     orderBy: [{ isOpen: "desc" }, { createdAt: "desc" }],

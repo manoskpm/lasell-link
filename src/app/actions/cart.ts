@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function addToCartAction(variantId: number, quantity: number) {
@@ -68,9 +68,12 @@ export async function removeCartItemAction(cartItemId: number) {
   revalidatePath("/", "layout");
 }
 
-export async function getCartCount(userId: number) {
+/// 로그인한 본인의 장바구니 수량만 센다 (다른 사람 번호를 넣어 부를 수 없게)
+export async function getCartCount() {
+  const user = await getCurrentUser();
+  if (!user) return 0;
   const result = await prisma.cartItem.aggregate({
-    where: { userId },
+    where: { userId: user.id },
     _sum: { quantity: true },
   });
   return result._sum.quantity ?? 0;

@@ -1,3 +1,4 @@
+import { requireSellerConsole } from "@/lib/access";
 import Link from "next/link";
 import { Calendar } from "./Calendar";
 import { CourierBillForm } from "./CourierBillForm";
@@ -48,6 +49,8 @@ export default async function AdminFinancePage({
 }: {
   searchParams: Promise<{ month?: string; day?: string }>;
 }) {
+  await requireSellerConsole();
+
   const { month: monthParam, day: dayParam } = await searchParams;
   const today = todayKst();
   const thisMonth = today.slice(0, 7);

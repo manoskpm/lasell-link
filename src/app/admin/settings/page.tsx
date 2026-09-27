@@ -1,7 +1,10 @@
+import { requireSellerConsole } from "@/lib/access";
 import { getSettings } from "@/lib/settings";
 import { SettingsForm } from "./SettingsForm";
 
 export default async function AdminSettingsPage() {
+  await requireSellerConsole();
+
   const settings = await getSettings();
 
   return (

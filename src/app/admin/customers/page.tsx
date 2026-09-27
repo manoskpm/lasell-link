@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FollowToggle } from "@/components/FollowToggle";
+import { requireSellerConsole } from "@/lib/access";
 import { formatDate } from "@/lib/format";
 import { won } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -9,12 +10,16 @@ export default async function AdminCustomersPage({
 }: {
   searchParams: Promise<{ q?: string; follow?: string }>;
 }) {
+  await requireSellerConsole();
+
   const { q, follow } = await searchParams;
   const keyword = q?.trim();
   const followOnly = follow === "1";
 
+  // 운영자 계정은 셀러의 회원 목록에 나오지 않게 뺀다 (운영자 아이디 노출 방지)
   const customers = await prisma.user.findMany({
     where: {
+      platformAccount: false,
       ...(keyword
         ? {
             OR: [
@@ -115,9 +120,9 @@ export default async function AdminCustomersPage({
                 <tr key={customer.id} className="border-b border-zinc-100">
                   <td className="px-4 py-3 whitespace-nowrap font-medium">
                     {customer.name}
-                    {customer.role === "ADMIN" && (
+                    {customer.role === "SELLER" && (
                       <span className="ml-1.5 chip bg-zinc-900 text-white">
-                        관리자
+                        셀러
                       </span>
                     )}
                   </td>
@@ -139,7 +144,7 @@ export default async function AdminCustomersPage({
                     {won(totalSpent)}
                   </td>
                   <td className="px-4 py-3">
-                    {customer.role !== "ADMIN" && (
+                    {customer.role !== "SELLER" && (
                       <FollowToggle
                         userId={customer.id}
                         followed={Boolean(customer.followedAt)}
@@ -185,7 +190,7 @@ export default async function AdminCustomersPage({
                 <p className="text-xs text-zinc-400">
                   가입 {formatDate(customer.createdAt)}
                 </p>
-                {customer.role !== "ADMIN" && (
+                {customer.role !== "SELLER" && (
                   <FollowToggle
                     userId={customer.id}
                     followed={Boolean(customer.followedAt)}
