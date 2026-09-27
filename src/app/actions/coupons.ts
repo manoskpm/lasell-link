@@ -73,10 +73,10 @@ export async function choosePendingCouponAction(couponId: number) {
   if (couponId > 0) {
     const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });
     if (!coupon || !coupon.isActive) {
-      return { error: "지금은 쓸 수 없는 쿠폰이에요." };
+      return { error: "이 쿠폰은 지금 쓸 수 없어요. 다른 쿠폰을 고르거나 쿠폰 없이 그대로 두셔도 돼요." };
     }
     if (coupon.expiresAt && coupon.expiresAt < new Date()) {
-      return { error: "사용기한이 지난 쿠폰이에요." };
+      return { error: "사용기한이 지난 쿠폰이에요. 다른 쿠폰을 골라주세요." };
     }
   }
 

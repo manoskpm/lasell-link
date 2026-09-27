@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { logoutAction } from "@/app/actions/auth";
 import { AppLogoMark } from "@/components/AppLogo";
+import { PlatformNav } from "@/components/platform/PlatformNav";
 import { APP_NAME } from "@/lib/app";
 import { requirePlatform } from "@/lib/access";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: `${APP_NAME} 운영자` };
 
@@ -15,6 +17,9 @@ export default async function PlatformLayout({
   children: React.ReactNode;
 }) {
   const operator = await requirePlatform();
+  const pendingCount = await prisma.sellerApplication.count({
+    where: { status: "PENDING" },
+  });
 
   return (
     <div className="min-h-dvh bg-zinc-50">
@@ -45,6 +50,9 @@ export default async function PlatformLayout({
               </button>
             </form>
           </nav>
+        </div>
+        <div className="mx-auto mt-3 max-w-[1200px]">
+          <PlatformNav pendingCount={pendingCount} />
         </div>
       </header>
 

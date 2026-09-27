@@ -5,9 +5,10 @@ import { prisma } from "@/lib/prisma";
 export default async function PlatformHomePage() {
   await requirePlatform();
 
-  const [customers, sellers] = await Promise.all([
+  const [customers, sellers, pending] = await Promise.all([
     prisma.user.count({ where: { role: "CUSTOMER", platformAccount: false } }),
     prisma.user.count({ where: { role: "SELLER" } }),
+    prisma.sellerApplication.count({ where: { status: "PENDING" } }),
   ]);
 
   return (
@@ -18,6 +19,18 @@ export default async function PlatformHomePage() {
           셀러 승인과 운영 방침은 운영자만 정할 수 있어요.
         </p>
       </div>
+
+      {pending > 0 && (
+        <Link
+          href="/platform/applications"
+          className="flex items-center justify-between rounded-2xl border-2 border-amber-200 bg-amber-50 px-5 py-4 sm:max-w-md"
+        >
+          <span className="font-semibold text-amber-900">
+            확인을 기다리는 셀러 신청 {pending}건
+          </span>
+          <span className="text-sm text-amber-800">보러 가기 →</span>
+        </Link>
+      )}
 
       <section className="grid grid-cols-2 gap-3 sm:max-w-md">
         <div className="card">

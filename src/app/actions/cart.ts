@@ -3,15 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { storeClosedReason } from "@/lib/shop";
 
 export async function addToCartAction(variantId: number, quantity: number) {
   const user = await requireUser();
 
+  const closed = await storeClosedReason();
+  if (closed) return { error: closed };
+
   const variant = await prisma.productVariant.findUnique({
     where: { id: variantId },
   });
-  if (!variant) return { error: "선택한 옵션을 찾을 수 없어요." };
-  if (variant.stock <= 0) return { error: "품절된 옵션이에요." };
+  if (!variant) return { error: "고른 옵션이 방금 바뀌었어요. 화면을 새로고침하고 다시 골라주세요." };
+  if (variant.stock <= 0) return { error: "이 옵션은 방금 다 팔렸어요. 다른 색상이나 사이즈를 골라주세요." };
 
   const existing = await prisma.cartItem.findUnique({
     where: { userId_variantId: { userId: user.id, variantId } },
@@ -43,7 +47,7 @@ export async function setCartQuantityAction(
     where: { id: cartItemId },
     include: { variant: true },
   });
-  if (!item || item.userId !== user.id) return { error: "잘못된 요청이에요." };
+  if (!item || item.userId !== user.id) return { error: "장바구니에서 이 상품을 찾을 수 없어요. 화면을 새로고침해주세요." };
 
   if (quantity <= 0) {
     await prisma.cartItem.delete({ where: { id: cartItemId } });
@@ -84,6 +88,9 @@ export async function addManyToCartAction(
   items: { variantId: number; quantity: number }[]
 ) {
   const user = await requireUser();
+
+  const closed = await storeClosedReason();
+  if (closed) return { error: closed };
 
   const cleaned = items.filter((item) => item.variantId > 0 && item.quantity > 0);
   if (cleaned.length === 0) return { error: "담을 옵션을 골라주세요." };

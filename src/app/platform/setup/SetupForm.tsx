@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 import { platformSetupAction } from "@/app/actions/platform";
 
 export function SetupForm() {
   const [state, formAction, pending] = useActionState(platformSetupAction, null);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <KeepValuesForm action={formAction} className="flex flex-col gap-4">
       <div>
         <label className="label" htmlFor="setupCode">
           설치 코드
@@ -65,6 +66,6 @@ export function SetupForm() {
       <button type="submit" disabled={pending} className="btn-primary mt-2">
         {pending ? "만드는 중..." : "운영자 계정 만들기"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

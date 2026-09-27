@@ -25,6 +25,12 @@ export default async function SignupPage() {
           로그인
         </Link>
       </p>
+      <p className="text-center text-sm text-zinc-500">
+        라이브로 판매하고 싶으신가요?{" "}
+        <Link href="/seller/apply" className="font-semibold text-zinc-900 underline">
+          셀러 신청
+        </Link>
+      </p>
     </div>
   );
 }

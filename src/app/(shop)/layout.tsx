@@ -7,6 +7,7 @@ import { ShopLogo } from "@/components/ShopLogo";
 import { getCartCount } from "@/app/actions/cart";
 import { getAccess } from "@/lib/access";
 import { getSettings } from "@/lib/settings";
+import { storeClosedReason } from "@/lib/shop";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();
@@ -17,12 +18,21 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ShopLayout({ children }: LayoutProps<"/">) {
-  const [access, settings] = await Promise.all([getAccess(), getSettings()]);
+  const [access, settings, closedReason] = await Promise.all([
+    getAccess(),
+    getSettings(),
+    storeClosedReason(),
+  ]);
   const user = access.user;
   const cartCount = await getCartCount();
 
   return (
     <div className="relative mx-auto min-h-dvh w-full max-w-[480px] bg-white pb-28">
+      {closedReason && (
+        <p className="bg-amber-50 px-4 py-2.5 text-center text-sm font-medium text-amber-800">
+          {closedReason}
+        </p>
+      )}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-100 bg-white/95 px-4 py-3 backdrop-blur">
         <Link href="/" className="flex items-center">
           <ShopLogo logoUrl={settings.logoUrl} shopName={settings.shopName} />

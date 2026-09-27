@@ -125,14 +125,14 @@ export async function importTrackingAction(
   try {
     sheet = await readSheetRows(Buffer.from(await file.arrayBuffer()));
   } catch {
-    return { error: "엑셀 파일을 읽지 못했어요." };
+    return { error: "엑셀 파일을 읽지 못했어요. 택배사에서 받은 .xlsx 파일이 맞는지 확인하고 다시 올려주세요." };
   }
 
   const mapping = detectMapping(sheet.headers);
   if (!mapping.orderNo || !mapping.trackingNumber) {
     const found = sheet.headers.filter(Boolean).join(", ");
     return {
-      error: `주문번호 열과 운송장번호 열을 찾지 못했어요. 엑셀에서 읽은 항목: ${found || "(없음)"}`,
+      error: `주문번호 칸과 운송장번호 칸을 찾지 못했어요. 엑셀 첫 줄에 "주문번호"와 "운송장번호" 제목이 있는지 확인해주세요. (엑셀에서 읽은 제목: ${found || "없음"})`,
     };
   }
 
@@ -175,7 +175,7 @@ export async function importTrackingAction(
   revalidatePath("/my/orders");
 
   if (updated === 0 && failed.length === 0) {
-    return { error: "엑셀에서 입력할 운송장번호를 찾지 못했어요." };
+    return { error: "엑셀에서 운송장번호를 찾지 못했어요. 운송장번호 칸이 채워진 파일인지 확인하고 다시 올려주세요." };
   }
   return { updated, failed };
 }

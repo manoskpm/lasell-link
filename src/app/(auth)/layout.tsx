@@ -8,7 +8,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-[480px] bg-white px-5 py-10">
+    <div className="mx-auto min-h-dvh w-full max-w-[480px] break-keep bg-white px-5 py-10">
       <div className="flex flex-col items-center gap-3">
         <Link href="/" className="flex items-center">
           <AppLogo size={40} className="text-2xl font-bold tracking-tight" />

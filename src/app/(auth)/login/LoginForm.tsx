@@ -1,13 +1,15 @@
 "use client";
 
 import { useActionState } from "react";
+import { KeepValuesForm } from "@/components/KeepValuesForm";
 import { loginAction } from "@/app/actions/auth";
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(loginAction, null);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <KeepValuesForm action={formAction} className="flex flex-col gap-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <div>
         <label className="label" htmlFor="loginId">
           아이디
@@ -36,6 +38,6 @@ export function LoginForm() {
       <button type="submit" disabled={pending} className="btn-primary mt-2">
         {pending ? "로그인 중..." : "로그인"}
       </button>
-    </form>
+    </KeepValuesForm>
   );
 }

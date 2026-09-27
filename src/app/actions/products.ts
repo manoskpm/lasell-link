@@ -45,7 +45,7 @@ export async function createProductAction(
   const colors = splitOptions(String(formData.get("colors") ?? ""));
 
   if (!name || !Number.isFinite(price) || price <= 0) {
-    return { error: "상품명과 판매가를 올바르게 입력해주세요." };
+    return { error: "상품명과 판매가를 적어주세요. 판매가는 숫자로만 적어요. 예: 29000" };
   }
 
   const imageUrl = await saveUploadedImage(
@@ -90,9 +90,9 @@ export async function updateProductAction(
   const price = Number(formData.get("price") ?? 0);
   const cost = Number(formData.get("cost") ?? 0);
 
-  if (!productId) return { error: "잘못된 요청이에요." };
+  if (!productId) return { error: "상품 정보를 찾을 수 없어요. 상품 목록에서 다시 열어주세요." };
   if (!name || !Number.isFinite(price) || price <= 0) {
-    return { error: "상품명과 판매가를 올바르게 입력해주세요." };
+    return { error: "상품명과 판매가를 적어주세요. 판매가는 숫자로만 적어요. 예: 29000" };
   }
 
   const newImage = await saveUploadedImage(
@@ -179,7 +179,7 @@ export async function quickCreateProductAction(
 
   if (!name) return { error: "상품명을 입력해주세요." };
   if (!Number.isFinite(price) || price <= 0) {
-    return { error: "판매가를 올바르게 입력해주세요." };
+    return { error: "판매가를 숫자로만 적어주세요. 예: 29000" };
   }
 
   const imageUrl = await saveUploadedImage(

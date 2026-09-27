@@ -31,6 +31,17 @@ export default async function MyPage() {
         주문내역 보기
       </Link>
 
+      {!access.isPlatform && !access.canUseSellerConsole && (
+        <Link
+          href={access.isSeller ? "/seller/status" : "/seller/apply"}
+          className="rounded-xl border border-dashed border-zinc-300 px-4 py-3 text-center text-sm text-zinc-600"
+        >
+          {access.isSeller
+            ? "내 상점 상태 보기"
+            : "라이브로 판매하고 싶으신가요? 셀러 신청하기"}
+        </Link>
+      )}
+
       <div className="h-px bg-zinc-100" />
 
       <ProfileForm

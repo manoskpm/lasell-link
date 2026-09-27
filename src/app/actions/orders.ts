@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { sellingPrice } from "@/lib/price";
 import { planShipping } from "@/lib/shippingPlan";
 import type { FormState } from "./auth";
+import { storeClosedReason } from "@/lib/shop";
 
 type Tx = Prisma.TransactionClient;
 
@@ -35,7 +36,7 @@ async function takeStock(
     throw new Error(
       left && left.stock > 0
         ? `${productName} 재고가 ${left.stock}개 남았어요. 수량을 줄여주세요.`
-        : `${productName}이(가) 방금 품절됐어요. 다른 분이 먼저 결제했습니다.`
+        : `${productName}이(가) 방금 품절됐어요. 다른 분이 먼저 사셨어요. 장바구니에서 빼고 다른 상품을 골라주세요.`
     );
   }
 }
@@ -79,7 +80,8 @@ async function assertWithinPersonLimit(
   if (already + adding > product.limitPerPerson) {
     throw new Error(
       `${product.name}은(는) 1인당 ${product.limitPerPerson}개까지만 구매할 수 있어요.` +
-        (already > 0 ? ` (이미 ${already}개 구매)` : "")
+        (already > 0 ? ` (이미 ${already}개 구매)` : "") +
+        " 수량을 줄여주세요."
     );
   }
 }
@@ -90,6 +92,10 @@ export async function placeOrderAction(
   formData: FormData
 ): Promise<FormState> {
   const user = await requireUser();
+
+  const closed = await storeClosedReason();
+  if (closed) return { error: closed };
+
   const memo = String(formData.get("memo") ?? "").trim() || null;
   // 결제창 1회분 토큰. 더블클릭·새로고침으로 같은 주문이 두 번 들어오는 것을 막음
   const clientToken = String(formData.get("clientToken") ?? "").trim() || null;
@@ -114,7 +120,7 @@ export async function placeOrderAction(
         orderBy: { variantId: "asc" }, // 항상 같은 순서로 처리해야 동시 결제에서 엉키지 않음
       });
 
-      if (cartItems.length === 0) throw new Error("장바구니가 비어있어요.");
+      if (cartItems.length === 0) throw new Error("장바구니가 비어 있어요. 사고 싶은 상품을 먼저 담아주세요.");
 
       // 1) 1인당 구매수량 제한 확인
       for (const item of cartItems) {
@@ -224,7 +230,7 @@ export async function createSettlementAction(
       });
 
       if (orders.length === 0) {
-        throw new Error("정산할 수 있는 주문이 없어요.");
+        throw new Error("정산할 수 있는 주문이 없어요. 이미 정산됐거나 취소된 주문인지 확인해주세요.");
       }
 
       const itemsTotal = orders.reduce(
@@ -364,8 +370,8 @@ export async function cancelOrderAction(orderId: number, reason: string) {
         where: { id: orderId },
         include: { items: true, settlement: true },
       });
-      if (!order) throw new Error("주문을 찾을 수 없어요.");
-      if (order.canceledAt) throw new Error("이미 취소된 주문이에요.");
+      if (!order) throw new Error("주문을 찾을 수 없어요. 화면을 새로고침해주세요.");
+      if (order.canceledAt) throw new Error("이미 취소된 주문이에요. 화면을 새로고침하면 반영돼요.");
 
       // 이미 발송된 주문은 물건이 나갔으므로 재고를 되돌리지 않음
       if (order.settlement?.shippingStatus !== "발송완료") {
@@ -488,8 +494,8 @@ export async function createOrderForCustomerAction(
         }),
       ]);
 
-      if (!customer) throw new Error("손님을 찾을 수 없어요.");
-      if (!variant) throw new Error("상품 옵션을 찾을 수 없어요.");
+      if (!customer) throw new Error("고른 손님을 찾을 수 없어요. 손님을 다시 골라주세요.");
+      if (!variant) throw new Error("고른 상품 옵션을 찾을 수 없어요. 상품과 옵션을 다시 골라주세요.");
 
       await assertWithinPersonLimit(tx, {
         userId: customer.id,

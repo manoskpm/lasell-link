@@ -258,7 +258,7 @@ export async function readSheetInfo(
     ? (workbook.getWorksheet(sheetName) ?? workbook.worksheets[0])
     : workbook.worksheets[0];
 
-  if (!sheet) throw new Error("엑셀에서 시트를 찾을 수 없어요.");
+  if (!sheet) throw new Error("엑셀 파일 안에 내용이 없어요. 택배사에서 받은 원래 파일을 올려주세요.");
 
   let headerRow = 1;
   let headers: string[] = [];
@@ -330,7 +330,7 @@ export async function fillTemplate({
     ? (workbook.getWorksheet(sheetName) ?? workbook.worksheets[0])
     : workbook.worksheets[0];
 
-  if (!sheet) throw new Error("엑셀에서 시트를 찾을 수 없어요.");
+  if (!sheet) throw new Error("엑셀 파일 안에 내용이 없어요. 택배사에서 받은 원래 파일을 올려주세요.");
 
   rows.forEach((data, index) => {
     const row = sheet.getRow(startRow + index);

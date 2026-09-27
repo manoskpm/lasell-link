@@ -76,6 +76,27 @@ for (const { dir, guard } of pageRules) {
   }
 }
 
+// 4) "use server" 파일은 async 함수만 내보낼 수 있다. 상수를 내보내면 화면이 500 오류로 멈춘다
+for (const file of walk("src/app/actions").filter((f) => f.endsWith(".ts"))) {
+  const src = readFileSync(file, "utf8");
+  if (!src.includes('"use server"')) continue;
+  for (const match of src.matchAll(/^export (?!async function|type |interface )(\w+)/gm)) {
+    problems.push(`서버 기능 파일 ${file} → "export ${match[1]}" (상수·일반 함수는 src/lib 로 옮길 것)`);
+  }
+}
+
+// 5) 운영자 기능 파일은 반드시 requirePlatform 으로 검사
+{
+  const file = "src/app/actions/platform.ts";
+  const src = readFileSync(file, "utf8");
+  for (const match of src.matchAll(/export async function (\w+)\s*\(/g)) {
+    if (PUBLIC_ACTIONS.has(match[1])) continue;
+    if (!bodyAfter(src, match.index).includes("requirePlatform(")) {
+      problems.push(`운영자 기능 ${file} → ${match[1]}() 에 requirePlatform 없음`);
+    }
+  }
+}
+
 if (problems.length > 0) {
   console.error(`권한 검사가 빠진 곳 ${problems.length}개:`);
   for (const p of problems) console.error("  - " + p);

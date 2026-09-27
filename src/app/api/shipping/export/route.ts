@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
   if (!template) {
     return NextResponse.json(
-      { error: "양식을 찾을 수 없어요." },
+      { error: "택배사 양식을 찾을 수 없어요. 택배 화면에서 양식을 다시 골라주세요." },
       { status: 404 },
     );
   }
