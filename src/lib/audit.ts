@@ -12,6 +12,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   SHOP_BANK_ACCOUNT_CHANGED: "입금계좌 변경",
   PLATFORM_SETTINGS_UPDATE: "운영 방침 저장",
   SETTLEMENT_OVERDUE_CANCEL: "입금 기한 초과 취소",
+  DEPOSIT_MATCHED: "거래내역으로 입금 확인",
 };
 
 type AuditInput = {

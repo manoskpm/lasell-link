@@ -110,12 +110,17 @@ export default async function AdminSettlementsPage({
             배송은 이 단위로 나갑니다.
           </p>
         </div>
-        <a
-          href={`/api/admin/export/settlements?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}), ...(filter !== "all" ? { filter } : {}) }).toString()}`}
-          className="chip bg-zinc-900 text-white"
-        >
-          엑셀 내려받기
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/settlements/match" className="chip bg-emerald-600 text-white">
+            거래내역으로 입금 확인
+          </Link>
+          <a
+            href={`/api/admin/export/settlements?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}), ...(filter !== "all" ? { filter } : {}) }).toString()}`}
+            className="chip bg-zinc-900 text-white"
+          >
+            엑셀 내려받기
+          </a>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

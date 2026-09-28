@@ -57,6 +57,7 @@ model User {
   sellerApplications SellerApplication[] @relation("Applicant")
   reviewedApplications SellerApplication[] @relation("Reviewer")
   shop               Shop?
+  depositorAliases   DepositorAlias[]
 }
 
 /// 셀러 신청서. 거절된 뒤 다시 신청하면 새 행이 생겨 이력이 남는다
@@ -137,14 +138,32 @@ model Shop {
   courierLoginId      String?
   courierCustomerCode String?
 
-  /// 입금 기한 설정 자리 (계산·자동 취소 로직은 다음 단계에서 붙임)
-  /// "HOURS" = 청구 후 N시간, "FIXED_TIME" = 매일 정해진 시각까지
+  /// 입금 기한 설정. "HOURS" = 청구 후 N시간, "FIXED_TIME" = 매일 정해진 시각까지
   paymentDueRule      String  @default("HOURS")
   paymentDueHours     Int     @default(24)
   paymentDueFixedTime String? // "HH:mm" (24시간제)
 
   owner   User     @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
   courier Courier? @relation(fields: [courierId], references: [id], onDelete: SetNull)
+
+  depositorAliases DepositorAlias[]
+}
+
+/// "이 입금자명은 이 손님이다"라는 셀러의 확인을 기억해뒀다가,
+/// 다음에 같은 이름으로 입금되면 자동으로 같은 손님과 매칭한다.
+/// 상점 하나에 같은 입금자명은 손님 한 명만 가리킬 수 있다.
+model DepositorAlias {
+  id            Int      @id @default(autoincrement())
+  shopId        Int
+  depositorName String
+  userId        Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, depositorName])
 }
 
 /// 운영자가 관리하는 택배사 목록. 접수 사이트·배송조회 주소는 셀러가 실수로
@@ -296,7 +315,7 @@ model Settlement {
   addressDetail  String?
   memo           String?
   paymentMethod  String    @default("계좌이체") // 계좌이체 | 카드 | 기타
-  paymentStatus  String    @default("미입금") // 미입금 | 입금완료 | 환불완료
+  paymentStatus  String    @default("미입금") // 미입금 | 부분입금 | 입금완료 | 환불완료
   shippingStatus String    @default("접수전") // 접수전 | 접수완료 | 발송완료
   trackingNumber String?
   shippingFee    Int       @default(0)
