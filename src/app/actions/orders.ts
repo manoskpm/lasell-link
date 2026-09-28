@@ -318,13 +318,20 @@ export async function createSettlementAction(
 export async function updatePaymentStatusAction(
   settlementId: number,
   paymentStatus: string
-) {
+): Promise<{ ok: true } | { error: string }> {
   await requireSellerConsole();
-  await prisma.settlement.update({
-    where: { id: settlementId },
-    data: { paymentStatus },
-  });
+  try {
+    await prisma.settlement.update({
+      where: { id: settlementId },
+      data: { paymentStatus },
+    });
+  } catch {
+    return {
+      error: "저장하지 못했어요. 화면을 새로고침한 뒤 다시 시도해주세요.",
+    };
+  }
   revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 export async function updateShippingStatusAction(

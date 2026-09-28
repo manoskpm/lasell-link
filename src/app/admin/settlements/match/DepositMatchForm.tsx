@@ -9,6 +9,7 @@ import {
   type DepositCandidate,
   type DepositRow,
 } from "@/app/actions/paymentMatch";
+import { won } from "@/lib/format";
 
 const STATUS_LABEL: Record<DepositRow["status"], string> = {
   confident: "매칭됨",
@@ -28,6 +29,8 @@ type Choice = {
   settlementIds: number[];
   userId: number | null;
   label: string;
+  /// 선택한 정산(들)의 합계 금액 — 부분입금 모자란 금액 계산에 씀
+  amount: number;
 };
 
 const EXAMPLE = `2026-09-28 14:32  입금  23,000  김영희
@@ -124,9 +127,11 @@ function buildChoices(row: DepositRow, allUnpaid: DepositRow["candidates"]): Cho
   const choices: Choice[] = [];
 
   if (row.status === "confident" && row.suggestedSettlementIds.length > 0) {
+    // 확실한 매칭은 부분입금 확인 흐름을 타지 않으므로 금액은 거래금액으로 채워둠(미사용)
     choices.push({
       settlementIds: row.suggestedSettlementIds,
       userId: row.suggestedUserId,
+      amount: row.amountValue ?? 0,
       label:
         row.suggestedSettlementIds.length > 1
           ? `추천 · 정산 #${row.suggestedSettlementIds.join(", #")} 합계 처리 — ${row.suggestedCustomerName}`
@@ -138,6 +143,7 @@ function buildChoices(row: DepositRow, allUnpaid: DepositRow["candidates"]): Cho
     choices.push({
       settlementIds: [c.settlementId],
       userId: c.userId,
+      amount: c.amount,
       label: `정산 #${c.settlementId} · ${c.buyerName} · ${c.amountLabel} · ${c.dateLabel}`,
     });
   }
@@ -148,6 +154,7 @@ function buildChoices(row: DepositRow, allUnpaid: DepositRow["candidates"]): Cho
     choices.push({
       settlementIds: [u.settlementId],
       userId: u.userId,
+      amount: u.amount,
       label: `(다른 정산) #${u.settlementId} · ${u.buyerName} · ${u.amountLabel} · ${u.dateLabel}`,
     });
   }
@@ -170,9 +177,18 @@ function DepositRowCard({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [confirmShortfall, setConfirmShortfall] = useState(false);
 
   const selected = selectedIndex >= 0 ? choices[selectedIndex] : null;
   const canRememberAlias = Boolean(selected?.userId && row.depositorName);
+  const shortfall =
+    selected && row.amountValue != null ? selected.amount - row.amountValue : 0;
+
+  function selectChoice(index: number) {
+    setSelectedIndex(index);
+    setConfirmShortfall(false);
+    setError(null);
+  }
 
   function confirm() {
     if (!selected) return;
@@ -192,11 +208,30 @@ function DepositRowCard({
     });
   }
 
+  // 고른 정산이 입금액보다 크면(모자라면) 모자란 금액을 한 번 더 보여주고
+  // 확인받은 뒤에만 처리함 — '부분입금 의심' 줄이 아니어도 직접 고른 정산이
+  // 모자랄 수 있어서 항상 검사함
+  function handleConfirmClick() {
+    if (!selected) return;
+    if (shortfall > 0 && !confirmShortfall) {
+      setConfirmShortfall(true);
+      return;
+    }
+    confirm();
+  }
+
   function markPartial() {
     if (!selected || selected.settlementIds.length !== 1) return;
     setError(null);
     startTransition(async () => {
-      await updatePaymentStatusAction(selected.settlementIds[0], "부분입금");
+      const result = await updatePaymentStatusAction(
+        selected.settlementIds[0],
+        "부분입금"
+      );
+      if (result && "error" in result) {
+        setError(result.error);
+        return;
+      }
       setDone(true);
     });
   }
@@ -233,7 +268,7 @@ function DepositRowCard({
           <select
             className="input"
             value={selectedIndex}
-            onChange={(event) => setSelectedIndex(Number(event.target.value))}
+            onChange={(event) => selectChoice(Number(event.target.value))}
           >
             <option value={-1}>정산 선택 안 함</option>
             {choices.map((choice, index) => (
@@ -258,11 +293,38 @@ function DepositRowCard({
 
           {error && <p className="text-xs font-medium text-red-600">{error}</p>}
 
-          <div className="flex gap-2">
+          {confirmShortfall && shortfall > 0 && (
+            <div className="rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
+              <p>
+                정산 금액보다 <b>{won(shortfall)}</b> 모자라요. 그래도 입금완료로
+                처리할까요?
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => setConfirmShortfall(false)}
+                  className="flex-1 rounded-xl border border-amber-300 bg-white py-2 text-sm font-medium text-amber-800 disabled:opacity-40"
+                >
+                  아니요, 취소
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={confirm}
+                  className="flex-1 rounded-xl bg-amber-600 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                >
+                  {pending ? "처리 중..." : "예, 그래도 입금완료 처리"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className={`flex gap-2 ${confirmShortfall ? "hidden" : ""}`}>
             <button
               type="button"
               disabled={!selected || pending}
-              onClick={confirm}
+              onClick={handleConfirmClick}
               className="flex-1 rounded-xl bg-zinc-900 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
             >
               {pending ? "처리 중..." : "확인하고 입금완료 처리"}

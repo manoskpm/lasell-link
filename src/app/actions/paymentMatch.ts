@@ -17,6 +17,7 @@ import { prisma } from "@/lib/prisma";
 export type DepositCandidate = {
   settlementId: number;
   buyerName: string;
+  amount: number;
   amountLabel: string;
   dateLabel: string;
   userId: number | null;
@@ -25,6 +26,7 @@ export type DepositCandidate = {
 export type DepositRow = {
   key: string;
   rawLine: string;
+  amountValue: number | null;
   amountLabel: string | null;
   depositorName: string | null;
   dateLabel: string | null;
@@ -73,6 +75,7 @@ function toCandidateLabel(s: SettlementCandidate): DepositCandidate {
   return {
     settlementId: s.id,
     buyerName: s.buyerName,
+    amount: s.amount,
     amountLabel: won(s.amount),
     dateLabel: formatDate(s.createdAt),
     userId: s.userId,
@@ -87,6 +90,7 @@ function toDepositRow(
   const base = {
     key: `row-${index}`,
     rawLine: tx.raw,
+    amountValue: tx.amount,
     amountLabel: tx.amount != null ? won(tx.amount) : null,
     depositorName: tx.depositorName,
     dateLabel: tx.date ? formatDate(tx.date) : null,
@@ -114,6 +118,7 @@ function toDepositRow(
       candidates: outcome.candidates.map((c) => ({
         settlementId: c.settlementId,
         buyerName: c.buyerName,
+        amount: c.amount,
         amountLabel: won(c.amount),
         dateLabel: formatDate(c.createdAt),
         userId: c.userId,

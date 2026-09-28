@@ -22,7 +22,7 @@ export function OrderStatusControls({
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
-  function update(action: () => Promise<void>) {
+  function update(action: () => Promise<unknown>) {
     startTransition(async () => {
       await action();
       router.refresh();
