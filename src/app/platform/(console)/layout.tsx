@@ -3,11 +3,11 @@ import Link from "next/link";
 import { logoutAction } from "@/app/actions/auth";
 import { AppLogoMark } from "@/components/AppLogo";
 import { PlatformNav } from "@/components/platform/PlatformNav";
-import { APP_NAME } from "@/lib/app";
+import { COMPANY_NAME } from "@/lib/app";
 import { requirePlatform } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 
-export const metadata: Metadata = { title: `${APP_NAME} 운영자` };
+export const metadata: Metadata = { title: `${COMPANY_NAME} 운영자` };
 
 /// 운영자 전용 화면의 틀. 레이아웃은 화면 이동 때 다시 실행되지 않으므로
 /// 각 페이지와 서버 액션도 requirePlatform() 으로 따로 검사한다.
@@ -31,7 +31,7 @@ export default async function PlatformLayout({
             </span>
             <span>
               <span className="block text-[11px] font-medium text-zinc-400">
-                {APP_NAME}
+                {COMPANY_NAME}
               </span>
               <span className="block text-base font-bold">운영자</span>
             </span>

@@ -1,6 +1,6 @@
-import { APP_NAME, APP_NAME_EN } from "@/lib/app";
+import { APP_NAME, APP_NAME_EN, COMPANY_NAME } from "@/lib/app";
 
-/// 라셀링크 모노그램: 얇은 선 프레임 안에 세리프 L·S를 살짝 겹쳐 넣음.
+/// 로고 모노그램: 얇은 선 프레임 안에 세리프 L·S를 살짝 겹쳐 넣음.
 /// 색은 currentColor라 밝은 화면·어두운 화면 어디서나 그대로 읽힘
 const SERIF =
   "'Playfair Display','Didot','Bodoni MT','Times New Roman',Georgia,serif";
@@ -76,15 +76,19 @@ export function AppLogo({
   size = 28,
   className = "text-base font-bold tracking-tight",
   english = false,
+  company = false,
 }: {
   size?: number;
   className?: string;
   english?: boolean;
+  /// 운영자 설치 화면처럼 회사 이름을 밝혀야 하는 자리에서만 true로 씀
+  company?: boolean;
 }) {
+  const text = company ? COMPANY_NAME : english ? APP_NAME_EN : APP_NAME;
   return (
     <span className="inline-flex items-center gap-2">
       <AppLogoMark size={size} />
-      <span className={className}>{english ? APP_NAME_EN : APP_NAME}</span>
+      <span className={className}>{text}</span>
     </span>
   );
 }
