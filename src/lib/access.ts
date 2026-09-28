@@ -143,6 +143,18 @@ export async function requirePlatform() {
   return access.user;
 }
 
+/// 운영자 API 경로용: 이동(redirect) 대신 403 응답을 돌려준다. 통과하면 null.
+export async function platformApiGuard(): Promise<Response | null> {
+  const access = await getAccess();
+  if (!access.isPlatform) {
+    return new Response(
+      "운영자 계정으로 로그인한 뒤 다시 눌러주세요.",
+      { status: 403 }
+    );
+  }
+  return null;
+}
+
 /// API 경로용: 이동(redirect) 대신 403 응답을 돌려준다. 통과하면 null.
 export async function sellerConsoleApiGuard(): Promise<Response | null> {
   const access = await getAccess();

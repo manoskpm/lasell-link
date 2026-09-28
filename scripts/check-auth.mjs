@@ -13,6 +13,7 @@ const GUARDS = [
   "sellerConsoleApiGuard(",
   "sellerConsoleShopApiGuard(",
   "requireOwnShop(",
+  "platformApiGuard(",
 ];
 
 // 로그인 전에도 불러야 하는 것만 여기에 (이유를 같이 적을 것)
