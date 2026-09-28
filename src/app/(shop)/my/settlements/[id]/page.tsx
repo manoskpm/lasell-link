@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { StatusChip } from "@/components/StatusChip";
 import { requireUser } from "@/lib/auth";
 import { formatDate, optionLabel, won } from "@/lib/format";
+import { computePaymentDueAt } from "@/lib/paymentDue";
 import { prisma } from "@/lib/prisma";
 import { bankAccountRecentlyChanged, getStorefrontSettings } from "@/lib/shop";
 import { buildTrackingUrl } from "@/lib/tracking";
@@ -160,6 +161,10 @@ export default async function SettlementDetailPage({
               계좌가 최근에 바뀌었어요. 위 계좌가 맞는지 한 번 더 확인해주세요.
             </>
           )}
+          <br />
+          입금 기한:{" "}
+          <b>{formatDate(computePaymentDueAt(settings, settlement.createdAt))}</b>
+          까지
           <br />
           입금 확인 후 발송해드려요.
         </p>

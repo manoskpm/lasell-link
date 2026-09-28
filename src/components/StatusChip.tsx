@@ -1,5 +1,6 @@
 const COLORS: Record<string, string> = {
   미입금: "bg-amber-100 text-amber-700",
+  부분입금: "bg-orange-100 text-orange-700",
   입금완료: "bg-emerald-100 text-emerald-700",
   환불완료: "bg-zinc-200 text-zinc-600",
   보관중: "bg-violet-100 text-violet-700",
@@ -8,6 +9,7 @@ const COLORS: Record<string, string> = {
   접수완료: "bg-blue-100 text-blue-700",
   발송완료: "bg-emerald-100 text-emerald-700",
   취소됨: "bg-red-100 text-red-700",
+  기한초과: "bg-red-100 text-red-700",
 };
 
 export function StatusChip({ status }: { status: string }) {

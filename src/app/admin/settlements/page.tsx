@@ -5,11 +5,13 @@ import { StatusChip } from "@/components/StatusChip";
 import { itemLine } from "@/lib/courier";
 import { kstRangeToUtc } from "@/lib/date";
 import { formatDate, won } from "@/lib/format";
+import { computePaymentDueAt, isPaymentOverdue } from "@/lib/paymentDue";
 import { prisma } from "@/lib/prisma";
 
 const FILTERS = [
   { key: "all", label: "전체" },
   { key: "unpaid", label: "미입금" },
+  { key: "overdue", label: "기한초과" },
   { key: "toship", label: "발송대기" },
   { key: "done", label: "발송완료" },
   { key: "canceled", label: "취소" },
@@ -18,7 +20,11 @@ const FILTERS = [
 function statusWhere(filter: string) {
   if (filter === "canceled") return { canceledAt: { not: null } };
   const notCanceled = { canceledAt: null };
-  if (filter === "unpaid") return { ...notCanceled, paymentStatus: "미입금" };
+  // '기한초과'는 입금 기한이 상점마다 다른 규칙(시간 단위)으로 정해져서
+  // DB 조건만으로는 못 거르고, 일단 미입금 건을 가져와 화면단에서 한 번 더 거른다
+  if (filter === "unpaid" || filter === "overdue") {
+    return { ...notCanceled, paymentStatus: "미입금" };
+  }
   if (filter === "toship") {
     return {
       ...notCanceled,
@@ -46,7 +52,7 @@ export default async function AdminSettlementsPage({
   const createdAt = kstRangeToUtc(from, to);
   const keyword = q?.trim();
 
-  const settlements = await prisma.settlement.findMany({
+  const fetched = await prisma.settlement.findMany({
     where: {
       ...statusWhere(filter),
       ...(createdAt.gte || createdAt.lte ? { createdAt } : {}),
@@ -64,6 +70,12 @@ export default async function AdminSettlementsPage({
     include: { orders: { include: { items: true } } },
     orderBy: { createdAt: "desc" },
   });
+
+  // '기한초과'는 상점의 입금 기한 규칙으로 계산해서 지난 것만 남김
+  const settlements =
+    filter === "overdue"
+      ? fetched.filter((s) => isPaymentOverdue(computePaymentDueAt(shop, s.createdAt)))
+      : fetched;
 
   const query = (params: Record<string, string | undefined>) => {
     const search = new URLSearchParams();
@@ -162,6 +174,11 @@ export default async function AdminSettlementsPage({
                 order.items.reduce((s, i) => s + i.price * i.quantity, 0),
               0
             );
+            const dueAt = computePaymentDueAt(shop, settlement.createdAt);
+            const overdue =
+              !settlement.canceledAt &&
+              settlement.paymentStatus === "미입금" &&
+              isPaymentOverdue(dueAt);
             return (
               <div
                 key={settlement.id}
@@ -186,9 +203,19 @@ export default async function AdminSettlementsPage({
                           입금자명 {settlement.depositorName}
                         </p>
                       )}
+                    {!settlement.canceledAt &&
+                      settlement.paymentStatus === "미입금" && (
+                        <p
+                          className={`text-xs font-medium ${overdue ? "text-red-600" : "text-zinc-400"}`}
+                        >
+                          입금 기한 {formatDate(dueAt)}까지
+                          {overdue && " — 기한 지남"}
+                        </p>
+                      )}
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {settlement.canceledAt && <StatusChip status="취소됨" />}
+                    {overdue && <StatusChip status="기한초과" />}
                     <StatusChip status={settlement.paymentStatus} />
                     {!settlement.canceledAt && (
                       <StatusChip status={settlement.shippingStatus} />

@@ -1,4 +1,4 @@
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+export const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 /// 서버 시간대와 상관없이 한국 날짜(YYYY-MM-DD)로 변환
 export function kstDateKey(date: Date) {

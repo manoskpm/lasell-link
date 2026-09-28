@@ -143,6 +143,8 @@ export async function updateSettingsAction(
   });
 
   if (bankAccountChanged) {
+    // 지금은 운영 기록(/platform/audit)에만 남김.
+    // TODO: 알림 기능이 생기면 여기서 운영자에게도 알림을 보내도록 연결할 것.
     await recordAudit({
       actorUserId: user.id,
       action: "SHOP_BANK_ACCOUNT_CHANGED",

@@ -7,7 +7,7 @@ import {
   updateShippingStatusAction,
 } from "@/app/actions/orders";
 
-const PAYMENT_OPTIONS = ["미입금", "입금완료"];
+const PAYMENT_OPTIONS = ["미입금", "부분입금", "입금완료"];
 const SHIPPING_OPTIONS = ["접수전", "접수완료", "발송완료"];
 
 export function OrderStatusControls({

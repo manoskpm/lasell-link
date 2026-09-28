@@ -5,6 +5,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { itemLine } from "@/lib/courier";
 import { kstRangeToUtc, todayKst } from "@/lib/date";
 import { formatDate, won } from "@/lib/format";
+import { computePaymentDueAt, isPaymentOverdue } from "@/lib/paymentDue";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminHomePage() {
@@ -16,7 +17,7 @@ export default async function AdminHomePage() {
   const [
     todayOrders,
     heldCount,
-    unpaidCount,
+    unpaidSettlements,
     toShip,
     openCount,
     soldOutCount,
@@ -28,8 +29,9 @@ export default async function AdminHomePage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.order.count({ where: { canceledAt: null, settlementId: null } }),
-    prisma.settlement.count({
+    prisma.settlement.findMany({
       where: { paymentStatus: "미입금", canceledAt: null },
+      select: { createdAt: true },
     }),
     prisma.settlement.findMany({
       where: {
@@ -45,6 +47,11 @@ export default async function AdminHomePage() {
     prisma.productVariant.count({ where: { stock: 0 } }),
     prisma.user.count({ where: { role: "CUSTOMER", platformAccount: false } }),
   ]);
+
+  const unpaidCount = unpaidSettlements.length;
+  const overdueCount = unpaidSettlements.filter((s) =>
+    isPaymentOverdue(computePaymentDueAt(shop, s.createdAt))
+  ).length;
 
   const todaySales = todayOrders.reduce(
     (sum, order) =>
@@ -84,12 +91,18 @@ export default async function AdminHomePage() {
         </Link>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-7">
         <Stat label="오늘 주문" value={`${todayOrders.length}건`} />
         <Stat label="오늘 매출" value={won(todaySales)} />
         <Stat label="오픈중 상품" value={`${openCount}개`} />
         <Stat label="배송대기 주문" value={`${heldCount}건`} />
         <Stat label="미입금 정산" value={`${unpaidCount}건`} highlight={unpaidCount > 0} />
+        <Stat
+          label="입금 기한초과"
+          value={`${overdueCount}건`}
+          highlight={overdueCount > 0}
+          href={overdueCount > 0 ? "/admin/settlements?filter=overdue" : undefined}
+        />
         <Stat label="발송대기" value={`${toShip.length}건`} highlight={toShip.length > 0} />
       </div>
 
@@ -275,13 +288,15 @@ function Stat({
   label,
   value,
   highlight,
+  href,
 }: {
   label: string;
   value: string;
   highlight?: boolean;
+  href?: string;
 }) {
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+  const body = (
+    <>
       <p className="text-xs text-zinc-400">{label}</p>
       <p
         className={`mt-1 text-lg font-bold lg:text-xl ${
@@ -290,6 +305,21 @@ function Stat({
       >
         {value}
       </p>
-    </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="rounded-2xl border border-zinc-200 bg-white p-4 block"
+      >
+        {body}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4">{body}</div>
   );
 }

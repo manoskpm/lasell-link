@@ -3,9 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CancelOrderButton } from "@/components/CancelOrderButton";
 import { OrderStatusControls } from "@/components/OrderStatusControls";
+import { OverdueCancelButton } from "@/components/OverdueCancelButton";
 import { ShipRow } from "@/components/ShipRow";
 import { StatusChip } from "@/components/StatusChip";
 import { formatDate, optionLabel, won } from "@/lib/format";
+import { computePaymentDueAt, isPaymentOverdue } from "@/lib/paymentDue";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminSettlementDetailPage({
@@ -38,17 +40,31 @@ export default async function AdminSettlementDetailPage({
     0
   );
 
+  const dueAt = computePaymentDueAt(shop, settlement.createdAt);
+  const overdue =
+    !settlement.canceledAt &&
+    settlement.paymentStatus === "미입금" &&
+    isPaymentOverdue(dueAt);
+
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold">정산 #{settlement.id}</h1>
           {settlement.canceledAt && <StatusChip status="취소됨" />}
+          {overdue && <StatusChip status="기한초과" />}
         </div>
         <p className="mt-0.5 text-xs text-zinc-400">
           {formatDate(settlement.createdAt)} ·{" "}
           {settlement.user ? `회원 ${settlement.user.loginId}` : "비회원"}
         </p>
+        {!settlement.canceledAt && settlement.paymentStatus === "미입금" && (
+          <p
+            className={`mt-1 text-xs font-medium ${overdue ? "text-red-600" : "text-zinc-500"}`}
+          >
+            입금 기한 {formatDate(dueAt)}까지{overdue && " — 기한이 지났어요"}
+          </p>
+        )}
       </div>
 
       <section className="card flex flex-col gap-2">
@@ -181,6 +197,8 @@ export default async function AdminSettlementDetailPage({
         paymentStatus={settlement.paymentStatus}
         shippingStatus={settlement.shippingStatus}
       />
+
+      {overdue && <OverdueCancelButton settlementId={settlement.id} />}
 
       <Link href="/admin/settlements" className="btn-secondary">
         정산 목록으로

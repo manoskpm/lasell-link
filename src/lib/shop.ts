@@ -40,6 +40,9 @@ export type StorefrontSettings = {
   freeShippingOver: number;
   courierName: string | null;
   trackingUrlTemplate: string | null;
+  paymentDueRule: string;
+  paymentDueHours: number;
+  paymentDueFixedTime: string | null;
 };
 
 const FALLBACK_STOREFRONT_SETTINGS: StorefrontSettings = {
@@ -56,6 +59,9 @@ const FALLBACK_STOREFRONT_SETTINGS: StorefrontSettings = {
   freeShippingOver: 0,
   courierName: null,
   trackingUrlTemplate: null,
+  paymentDueRule: "HOURS",
+  paymentDueHours: 24,
+  paymentDueFixedTime: null,
 };
 
 export async function getStorefrontSettings(): Promise<StorefrontSettings> {
@@ -75,6 +81,9 @@ export async function getStorefrontSettings(): Promise<StorefrontSettings> {
     freeShippingOver: shop.freeShippingOver,
     courierName: shop.courier?.name ?? null,
     trackingUrlTemplate: shop.courier?.trackingUrlTemplate ?? null,
+    paymentDueRule: shop.paymentDueRule,
+    paymentDueHours: shop.paymentDueHours,
+    paymentDueFixedTime: shop.paymentDueFixedTime,
   };
 }
 

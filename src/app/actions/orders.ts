@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
-import { requireSellerConsole } from "@/lib/access";
+import { requireOwnShop, requireSellerConsole } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { applyCoupon } from "@/lib/coupon";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { recordAudit } from "@/lib/audit";
 import { sellingPrice } from "@/lib/price";
+import { computePaymentDueAt, isPaymentOverdue } from "@/lib/paymentDue";
 import { planShipping } from "@/lib/shippingPlan";
 import type { FormState } from "./auth";
 import { getStorefrontShop, storeClosedReason } from "@/lib/shop";
@@ -464,6 +466,90 @@ export async function cancelSettlementAction(
       },
     });
   });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/// 입금 기한이 지난 '미입금' 정산을 셀러가 확인하고 취소함 (재고는 되돌려서 다른 손님이 살 수 있게 함).
+/// 자동으로 취소되지 않고, 셀러가 화면에서 직접 눌러야만 처리된다.
+/// 부분입금·입금완료 건은 절대 여기로 취소할 수 없음 (실수로 돈 받은 주문이 날아가는 사고 방지).
+export async function cancelOverdueSettlementAction(
+  settlementId: number,
+  reason: string
+) {
+  const { user, shop } = await requireOwnShop();
+
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) {
+    return { error: "취소 사유를 적어주세요. 손님에게 그대로 보여지는 내용이에요." };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const settlement = await tx.settlement.findUnique({
+        where: { id: settlementId },
+        include: { orders: { include: { items: true } } },
+      });
+      if (!settlement) {
+        throw new Error("정산을 찾을 수 없어요. 화면을 새로고침해주세요.");
+      }
+      if (settlement.canceledAt) {
+        throw new Error("이미 취소된 정산이에요. 화면을 새로고침하면 반영돼요.");
+      }
+      if (settlement.paymentStatus !== "미입금") {
+        throw new Error(
+          "부분입금됐거나 이미 입금된 건은 기한 초과로 취소할 수 없어요. 입금 상태를 확인하고 직접 처리해주세요."
+        );
+      }
+      if (settlement.shippingStatus === "발송완료") {
+        throw new Error("이미 발송된 건이라 취소할 수 없어요.");
+      }
+      const dueAt = computePaymentDueAt(shop, settlement.createdAt);
+      if (!isPaymentOverdue(dueAt)) {
+        throw new Error(
+          "아직 입금 기한이 지나지 않았어요. 화면을 새로고침해서 다시 확인해주세요."
+        );
+      }
+
+      for (const order of settlement.orders) {
+        if (order.canceledAt) continue;
+        // 아직 발송 전이므로 재고를 원래대로 되돌림
+        for (const item of order.items) {
+          if (!item.variantId) continue;
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+        await tx.order.update({
+          where: { id: order.id },
+          data: { canceledAt: new Date(), cancelReason: trimmedReason },
+        });
+      }
+
+      await tx.settlement.update({
+        where: { id: settlementId },
+        data: { canceledAt: new Date(), cancelReason: trimmedReason },
+      });
+
+      await recordAudit(
+        {
+          actorUserId: user.id,
+          action: "SETTLEMENT_OVERDUE_CANCEL",
+          targetType: "Settlement",
+          targetId: settlementId,
+          detail: `${settlement.buyerName} · ${trimmedReason}`,
+        },
+        tx
+      );
+    });
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "취소 처리 중 문제가 생겼어요.",
+    };
+  }
 
   revalidatePath("/", "layout");
   return { ok: true };
