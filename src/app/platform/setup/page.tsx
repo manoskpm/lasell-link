@@ -20,7 +20,7 @@ export default async function PlatformSetupPage() {
   return (
     <div className="mx-auto min-h-dvh w-full max-w-[480px] break-keep bg-white px-5 py-10">
       <div className="flex justify-center">
-        <AppLogo size={40} className="text-2xl font-bold tracking-tight" />
+        <AppLogo size={40} className="text-2xl font-bold tracking-tight" company />
       </div>
 
       <div className="mt-10 flex flex-col gap-6">
