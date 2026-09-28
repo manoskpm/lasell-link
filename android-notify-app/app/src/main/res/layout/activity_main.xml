@@ -1,0 +1,130 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="라스켓 입금 알림 설정"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp"
+            android:text="라스켓 관리자 화면 &gt; 설정에서 발급받은 주소와 연동키를 아래에 붙여넣으세요." />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1) 서버 주소" />
+        <EditText
+            android:id="@+id/inputUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="https://...  로 시작하는 주소" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="2) 연동키" />
+        <EditText
+            android:id="@+id/inputSecret"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="연동키를 붙여넣으세요" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="3) 어떤 은행 앱을 쓰시나요? (해당하는 것만 체크)"
+            android:textStyle="bold" />
+
+        <CheckBox
+            android:id="@+id/checkKakaoBank"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="카카오뱅크" />
+        <CheckBox
+            android:id="@+id/checkToss"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="토스" />
+        <CheckBox
+            android:id="@+id/checkKb"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="KB국민은행 (KB스타뱅킹)" />
+        <CheckBox
+            android:id="@+id/checkShinhan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="신한은행 (신한 SOL뱅크)" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="목록에 없는 은행이면(패키지명을 아는 경우만):" />
+        <EditText
+            android:id="@+id/inputExtraPackages"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="예: com.example.bank (여러 개는 쉼표로 구분)" />
+
+        <Button
+            android:id="@+id/buttonSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="저장하기" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="4) 알림 접근 허용 (꼭 필요해요)"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/statusListener"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="상태 확인 중..." />
+        <Button
+            android:id="@+id/buttonNotificationAccess"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="알림 접근 허용하러 가기" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="5) 배터리 최적화 제외 (삼성 폰은 꼭 필요해요)"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="안 해두면 화면을 꺼두었을 때 폰이 앱을 강제로 재워서 알림을 못 받을 수 있어요." />
+        <Button
+            android:id="@+id/buttonBatteryOptimization"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="배터리 최적화 제외하러 가기" />
+
+    </LinearLayout>
+</ScrollView>

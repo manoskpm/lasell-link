@@ -13,6 +13,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   PLATFORM_SETTINGS_UPDATE: "운영 방침 저장",
   SETTLEMENT_OVERDUE_CANCEL: "입금 기한 초과 취소",
   DEPOSIT_MATCHED: "거래내역으로 입금 확인",
+  DEPOSIT_AUTO_MATCHED: "입금 알림으로 자동 확인",
+  NOTIFY_SECRET_ISSUED: "입금 알림 연동 키 발급",
 };
 
 type AuditInput = {

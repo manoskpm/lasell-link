@@ -25,6 +25,7 @@ const PUBLIC_ACTIONS = new Set([
 ]);
 const PUBLIC_API = new Set([
   "src/app/api/presence/route.ts", // 손님 접속 표시 (개인정보 없음)
+  "src/app/api/notify/deposit/[shopSlug]/route.ts", // 셀러 폰(앱/단축어) 호출: 세션 대신 상점별 비밀키로 검사
 ]);
 
 function walk(dir) {

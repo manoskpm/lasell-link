@@ -1,6 +1,8 @@
 import { requireOwnShop } from "@/lib/access";
+import { formatDate } from "@/lib/format";
 import { getPlatformSettings } from "@/lib/platformSettings";
 import { prisma } from "@/lib/prisma";
+import { NotifyKeyCard } from "./NotifyKeyCard";
 import { SettingsForm } from "./SettingsForm";
 
 export default async function AdminSettingsPage() {
@@ -51,6 +53,10 @@ export default async function AdminSettingsPage() {
           paymentDueHours: String(shop.paymentDueHours),
           paymentDueFixedTime: shop.paymentDueFixedTime ?? "18:00",
         }}
+      />
+      <NotifyKeyCard
+        hasKey={Boolean(shop.notifySecretHash)}
+        issuedAtLabel={shop.notifySecretIssuedAt ? formatDate(shop.notifySecretIssuedAt) : null}
       />
     </div>
   );

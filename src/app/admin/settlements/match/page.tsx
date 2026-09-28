@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { listNotificationQueueAction } from "@/app/actions/depositNotify";
 import { requireOwnShop } from "@/lib/access";
 import { DepositMatchForm } from "./DepositMatchForm";
+import { NotificationQueue } from "./NotificationQueue";
 
 export const metadata: Metadata = { title: "입금 확인" };
 
 export default async function DepositMatchPage() {
   await requireOwnShop();
+  const queue = await listNotificationQueueAction();
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
@@ -18,6 +21,8 @@ export default async function DepositMatchPage() {
           입금완료 처리되지 않아요.
         </p>
       </div>
+
+      <NotificationQueue data={queue} />
 
       <DepositMatchForm />
 

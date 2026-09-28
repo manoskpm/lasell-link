@@ -10,6 +10,7 @@
     "check:auth": "node scripts/check-auth.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@prisma/adapter-better-sqlite3": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "exceljs": "^4.4.0",

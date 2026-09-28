@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+dev.db
+dev.db-journal
+.env
+.env.local
+public/uploads
+data
+android-notify-app
+*.log

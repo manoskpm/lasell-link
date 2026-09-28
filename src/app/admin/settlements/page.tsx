@@ -4,6 +4,7 @@ import { ShipRow } from "@/components/ShipRow";
 import { StatusChip } from "@/components/StatusChip";
 import { itemLine } from "@/lib/courier";
 import { kstRangeToUtc } from "@/lib/date";
+import { isNotifySilent } from "@/lib/depositMatchCore";
 import { formatDate, won } from "@/lib/format";
 import { computePaymentDueAt, isPaymentOverdue } from "@/lib/paymentDue";
 import { prisma } from "@/lib/prisma";
@@ -47,6 +48,13 @@ export default async function AdminSettlementsPage({
   }>;
 }) {
   const { shop } = await requireOwnShop();
+
+  // 입금 알림 자동 확인을 켰는데, 방송 중인데도 알림이 한참 안 들어오면 연결이 끊겼을 수 있음
+  const NOTIFY_SILENCE_HOURS = 2;
+  const isLiveNow = shop.notifySecretHash
+    ? (await prisma.product.count({ where: { isOpen: true } })) > 0
+    : false;
+  const notifySilent = isNotifySilent(shop, isLiveNow, NOTIFY_SILENCE_HOURS);
 
   const { filter = "all", from, to, q } = await searchParams;
   const createdAt = kstRangeToUtc(from, to);
@@ -122,6 +130,16 @@ export default async function AdminSettlementsPage({
           </a>
         </div>
       </div>
+
+      {notifySilent && (
+        <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          방송 중인데 입금 알림이 {NOTIFY_SILENCE_HOURS}시간 넘게 안 들어왔어요. 폰이 꺼졌거나
+          연결이 끊겼을 수 있어요.{" "}
+          <Link href="/admin/settings" className="underline">
+            입금 알림 연결 확인하기
+          </Link>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((item) => (

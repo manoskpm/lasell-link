@@ -103,3 +103,15 @@ export function maskBankAccount(raw: string) {
   const masked = "*".repeat(last.length - 4) + visible;
   return raw.slice(0, raw.lastIndexOf(last)) + masked;
 }
+
+/// 입금 알림 원문을 저장하기 전에 계좌번호로 보이는 긴 숫자를 가림.
+/// 입금액은 보통 100만원 미만(6자리 이하)이라 7자리 이상만 가리면 계좌번호는 가리고
+/// 금액은 그대로 남길 수 있음 (계좌번호는 보통 11~14자리)
+export function maskLongDigitRuns(text: string) {
+  return text.replace(/[\d-]{7,}/g, (match) => {
+    const digits = match.replace(/-/g, "");
+    if (digits.length < 7) return match;
+    const visible = digits.slice(-4);
+    return "*".repeat(digits.length - 4) + visible;
+  });
+}
