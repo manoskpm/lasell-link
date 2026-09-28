@@ -13,6 +13,11 @@ export function daysAgoKst(days: number) {
   return kstDateKey(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
 }
 
+/// 지금부터 windowMs 이전 시각. "최근 접속" 같은 조회 조건에 씀
+export function msAgo(windowMs: number) {
+  return new Date(Date.now() - windowMs);
+}
+
 export function monthStartKst() {
   return `${todayKst().slice(0, 7)}-01`;
 }

@@ -1,7 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { quickCreateProductAction } from "@/app/actions/products";
 import { KeepValuesForm } from "@/components/KeepValuesForm";
 
@@ -26,12 +32,14 @@ export function QuickAddForm() {
   useEffect(() => {
     if (state && !state.error) {
       formRef.current?.reset();
-      setSizes("");
-      setColors("");
-      setPhotoName(null);
       nameRef.current?.focus();
-      setAddedCount((count) => count + 1);
-      router.refresh();
+      startTransition(() => {
+        setSizes("");
+        setColors("");
+        setPhotoName(null);
+        setAddedCount((count) => count + 1);
+        router.refresh();
+      });
     }
   }, [state, router]);
 

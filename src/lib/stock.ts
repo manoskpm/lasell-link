@@ -42,3 +42,9 @@ export function isSaleOpen(saleClosesAt: Date | null) {
   if (!saleClosesAt) return true; // 연장판매 설정이 없으면 평소대로
   return saleClosesAt.getTime() > Date.now();
 }
+
+/// 오픈한 지 10분 안 지났는지 ('방금 오픈' 표시용)
+export function isRecentlyOpened(openedAt: Date | null) {
+  if (!openedAt) return false;
+  return Date.now() - openedAt.getTime() < 10 * 60 * 1000;
+}

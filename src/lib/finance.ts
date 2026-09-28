@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { kstMonthRange, shiftMonth } from "@/lib/month";
+import { kstMonthRange } from "@/lib/month";
 import { getStorefrontShop } from "@/lib/shop";
 
 export { kstMonthRange, kstMonthKey, shiftMonth } from "@/lib/month";

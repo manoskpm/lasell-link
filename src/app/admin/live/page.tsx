@@ -6,7 +6,7 @@ import { CloseAllButton } from "./CloseAllButton";
 import { ExtendedSaleButton } from "./ExtendedSaleButton";
 import { OpenToggle } from "@/components/OpenToggle";
 import { itemLine } from "@/lib/courier";
-import { kstRangeToUtc, todayKst } from "@/lib/date";
+import { kstRangeToUtc, msAgo, todayKst } from "@/lib/date";
 import { formatDate, won } from "@/lib/format";
 import { isOnSale, sellingPrice } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
@@ -74,7 +74,7 @@ export default async function AdminLivePage() {
 
   const viewers = await prisma.presence.count({
     where: {
-      lastSeenAt: { gte: new Date(Date.now() - ACTIVE_WINDOW_MS) },
+      lastSeenAt: { gte: msAgo(ACTIVE_WINDOW_MS) },
       ...(adminIds.length > 0
         ? { OR: [{ userId: null }, { userId: { notIn: adminIds } }] }
         : {}),

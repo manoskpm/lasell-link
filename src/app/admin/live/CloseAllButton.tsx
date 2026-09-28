@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
@@ -33,9 +34,9 @@ export function CloseAllButton({
             주소를 받아서 정산 화면에서 직접 넣어주세요.
           </p>
         )}
-        <a href="/admin/settlements" className="font-semibold underline">
+        <Link href="/admin/settlements" className="font-semibold underline">
           정산 · 배송 화면으로 →
-        </a>
+        </Link>
       </div>
     );
   }

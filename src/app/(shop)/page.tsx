@@ -4,7 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { won } from "@/lib/format";
 import { discountRate, isOnSale, sellingPrice } from "@/lib/price";
 import { getStorefrontSettings } from "@/lib/shop";
-import { isSaleOpen, sortForShop, stockState, totalStock } from "@/lib/stock";
+import {
+  isRecentlyOpened,
+  isSaleOpen,
+  sortForShop,
+  stockState,
+  totalStock,
+} from "@/lib/stock";
 
 const CATEGORIES = ["전체", "의류", "악세서리", "잡화"];
 
@@ -112,13 +118,11 @@ export default async function ShopHomePage({
                       {stock}개 남음
                     </span>
                   )}
-                  {state === "판매중" &&
-                    product.openedAt &&
-                    Date.now() - product.openedAt.getTime() < 10 * 60 * 1000 && (
-                      <span className="absolute left-2 top-2 rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] font-bold text-white">
-                        방금 오픈
-                      </span>
-                    )}
+                  {state === "판매중" && isRecentlyOpened(product.openedAt) && (
+                    <span className="absolute left-2 top-2 rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] font-bold text-white">
+                      방금 오픈
+                    </span>
+                  )}
                   {state === "품절" && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-sm font-semibold text-white">
                       품절
