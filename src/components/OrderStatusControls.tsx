@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   updatePaymentStatusAction,
   updateShippingStatusAction,
@@ -20,17 +20,28 @@ export function OrderStatusControls({
   shippingStatus: string;
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  function update(action: () => Promise<unknown>) {
+  function update(action: () => Promise<{ error: string } | unknown>) {
+    setError(null);
     startTransition(async () => {
-      await action();
+      const result = await action();
+      if (result && typeof result === "object" && "error" in result) {
+        setError((result as { error: string }).error);
+        return;
+      }
       router.refresh();
     });
   }
 
   return (
     <div className={`flex flex-col gap-4 ${pending ? "opacity-50" : ""}`}>
+      {error && (
+        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+          {error}
+        </p>
+      )}
       <div>
         <p className="label">입금 상태</p>
         <div className="flex gap-2">
