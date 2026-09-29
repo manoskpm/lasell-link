@@ -24,6 +24,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 ENV PORT=3000
+# Next standalone 서버(server.js)는 이 주소로만 열림. 안 넣으면 컨테이너 안에서
+# 컨테이너 이름으로 자동 설정된 HOSTNAME을 쓰게 돼서, Railway 프록시가 못 붙어 502가 날 수 있음
+# (Next.js 공식 standalone Dockerfile 예제도 이 줄을 넣음)
+ENV HOSTNAME="0.0.0.0"
 
 # standalone 출력(앱 코드 + 필요한 만큼만 추려진 node_modules)을 씀.
 # 그 위에 better-sqlite3 등 네이티브 모듈이 온전히 들어있는 전체 node_modules를 덮어써서

@@ -166,8 +166,11 @@ model DepositNotification {
   id        Int      @id @default(autoincrement())
   shopId    Int
   source    String // ANDROID | IOS
-  /// 상점+원문+수신시각으로 만든 해시. 같은 알림이 재전송돼도 중복 처리를 막음
+  /// 상점+원문+수신시각으로 만든 해시. 정확히 같은 요청이 두 번 오는 경우(재시도 등)를 막음
   dedupeHash String  @unique
+  /// 상점+원문(시각 제외)으로 만든 해시. 은행 앱이 알림을 업데이트/재게시해서
+  /// 앱이 보내는 수신시각이 달라져도, 10분 안에 같은 내용이면 중복으로 잡아냄
+  contentHash String @default("")
   receivedAt DateTime // 폰이 알림을 받은 시각 (기기 시각 기준, 매칭의 시간 비교에도 씀)
 
   /// 계좌번호로 보이는 긴 숫자는 저장 전에 마스킹. 90일 지나면 null로 비움 (구조화된 값만 남김)
@@ -191,6 +194,7 @@ model DepositNotification {
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId, status])
+  @@index([shopId, contentHash, createdAt])
 }
 
 /// "이 입금자명은 이 손님이다"라는 셀러의 확인을 기억해뒀다가,

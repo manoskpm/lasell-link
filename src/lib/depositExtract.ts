@@ -17,12 +17,25 @@ const SYSTEM_PROMPT = `너는 한국 은행 입금 알림(안드로이드 알림
 - depositorName: 입금자 이름. 원문에 적힌 글자 그대로. 못 찾으면 null.
 은행명, 계좌번호, 잔액 등 다른 정보는 무시한다. 반드시 extract_deposit 도구만 호출한다.`;
 
-function containsAmount(rawText: string, amount: number): boolean {
-  const digitsOnly = rawText.replace(/[^0-9]/g, " ");
-  return digitsOnly.split(/\s+/).some((chunk) => chunk.replace(/^0+/, "") === String(amount));
+/// 숫자 사이에 낀 쉼표·마침표(천단위 구분자)만 지움. "50,000" → "50000".
+/// 날짜("09.28")처럼 원래 숫자가 아닌 자리는 어차피 금액과 우연히 같을 확률이 거의 없어 안전함
+export function stripThousandsSeparators(text: string): string {
+  let result = text;
+  let prev;
+  do {
+    prev = result;
+    result = result.replace(/(\d)[,.](\d)/g, "$1$2");
+  } while (result !== prev);
+  return result;
 }
 
-function containsName(rawText: string, name: string): boolean {
+export function containsAmount(rawText: string, amount: number): boolean {
+  const normalized = stripThousandsSeparators(rawText);
+  const digitRuns = normalized.match(/\d+/g) ?? [];
+  return digitRuns.some((chunk) => (chunk.replace(/^0+/, "") || "0") === String(amount));
+}
+
+export function containsName(rawText: string, name: string): boolean {
   const trimmed = name.trim();
   return trimmed.length > 0 && rawText.includes(trimmed);
 }

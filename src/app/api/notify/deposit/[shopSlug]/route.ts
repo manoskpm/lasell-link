@@ -12,6 +12,10 @@ import { prisma } from "@/lib/prisma";
 /// 라방 중이라도 입금이 초당 여러 건씩 오지는 않으므로 넉넉한 값
 const RATE_LIMIT_PER_MINUTE = 30;
 const RAW_TEXT_RETENTION_DAYS = 90;
+/// 은행 앱이 같은 알림을 업데이트·재게시하면 앱이 보내는 수신시각이 달라져
+/// dedupeHash(원문+시각)가 달라질 수 있음. 그런 경우를 잡기 위해 원문만으로도
+/// 최근 이 시간 안에 들어온 게 있으면 중복으로 봄
+const CONTENT_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
 type NotifyBody = {
   rawText?: unknown;
@@ -72,12 +76,26 @@ export async function POST(
     data: { rawTextMasked: null },
   });
 
-  // 같은 알림이 재전송돼도 중복 처리하지 않게 막음
+  // 정확히 같은 요청이 두 번 오는 경우(네트워크 재시도 등)를 막음
   const dedupeHash = createHash("sha256")
     .update(`${shop.id}|${rawText}|${receivedAt.toISOString()}`)
     .digest("hex");
   const existing = await prisma.depositNotification.findUnique({ where: { dedupeHash } });
   if (existing) {
+    return Response.json({ ok: true, duplicate: true });
+  }
+
+  // 은행 앱이 알림을 업데이트/재게시해서 앱이 보내는 수신시각이 달라진 경우를 막음:
+  // 원문(시각 제외)이 같고 방금 전(10분 안)에 들어온 게 이미 있으면 중복으로 봄
+  const contentHash = createHash("sha256").update(`${shop.id}|${rawText}`).digest("hex");
+  const recentSameContent = await prisma.depositNotification.findFirst({
+    where: {
+      shopId: shop.id,
+      contentHash,
+      createdAt: { gte: new Date(Date.now() - CONTENT_DUPLICATE_WINDOW_MS) },
+    },
+  });
+  if (recentSameContent) {
     return Response.json({ ok: true, duplicate: true });
   }
 
@@ -128,6 +146,7 @@ export async function POST(
         shopId: shop.id,
         source,
         dedupeHash,
+        contentHash,
         receivedAt,
         rawTextMasked,
         extractedAmount: amount,
