@@ -2,7 +2,7 @@
 // 실제 한국 은행 알림 문구 예시로, Haiku가 뽑은 금액·이름이 원문에 그대로 있는지 검증하는
 // 함수가 쉼표 섞인 실제 금액에서도 제대로 동작하는지 확인한다.
 // (100원처럼 쉼표 없는 금액만 테스트하면 이 버그가 가려짐 — 반드시 1,000원 이상도 포함할 것)
-import { containsAmount, containsName } from "../src/lib/depositExtract.ts";
+import { classifyDirection, containsAmount, containsName, type DepositDirection } from "../src/lib/depositExtract.ts";
 
 type Case = {
   label: string;
@@ -31,7 +31,24 @@ const nameCases: { label: string; rawText: string; name: string; expected: boole
   { label: "이름이 원문에 없음(엉뚱한 이름)", rawText: "[카카오뱅크] 50,000원 입금 홍길동", name: "김철수", expected: false },
 ];
 
+const directionCases: { label: string; rawText: string; expected: DepositDirection }[] = [
+  { label: "카카오뱅크 입금", rawText: "입금 32,000원 김영희 → 내 입출금통장 잔액 1,532,000원", expected: "IN" },
+  { label: "받았어요 표현", rawText: "[토스] 김영희님에게 32,000원을 받았어요", expected: "IN" },
+  { label: "출금(환불 송금)", rawText: "출금 32,000원 김영희 잔액 1,500,000원", expected: "OUT" },
+  { label: "보냈어요 표현", rawText: "[토스] 김영희님에게 32,000원을 보냈어요", expected: "OUT" },
+  { label: "카드 결제", rawText: "[카카오뱅크] 체크카드 32,000원 결제 승인", expected: "OUT" },
+  { label: "광고·안내 알림", rawText: "이번 달 혜택을 확인해보세요", expected: "UNKNOWN" },
+  { label: "입금·출금이 같이 있음", rawText: "출금 10,000원 / 입금 32,000원", expected: "UNKNOWN" },
+];
+
 let failed = 0;
+
+for (const c of directionCases) {
+  const actual = classifyDirection(c.rawText);
+  const ok = actual === c.expected;
+  if (!ok) failed++;
+  console.log(`${ok ? "OK  " : "FAIL"} - classifyDirection: ${c.label} (기대 ${c.expected}, 실제 ${actual})`);
+}
 
 for (const c of amountCases) {
   const actual = containsAmount(c.rawText, c.amount);

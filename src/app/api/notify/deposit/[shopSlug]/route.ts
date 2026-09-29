@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { revalidatePath } from "next/cache";
 import { applyDepositMatch, loadUnpaidSettlements } from "@/lib/depositMatchCore";
-import { extractDepositFields } from "@/lib/depositExtract";
+import { classifyDirection, extractDepositFields } from "@/lib/depositExtract";
 import { normalizeName, matchTransaction, type ParsedTransaction } from "@/lib/paymentMatch";
 import { notifySecretMatches } from "@/lib/notifySecret";
 import { maskLongDigitRuns } from "@/lib/shop";
@@ -99,6 +99,36 @@ export async function POST(
     return Response.json({ ok: true, duplicate: true });
   }
 
+  // 출금·송금·결제 알림은 입금이 아님 → 매칭하지 않고 기록만 남김 (셀러 화면에도 안 뜸)
+  const direction = classifyDirection(rawText);
+  if (direction === "OUT") {
+    try {
+      await prisma.depositNotification.create({
+        data: {
+          shopId: shop.id,
+          source,
+          dedupeHash,
+          contentHash,
+          receivedAt,
+          rawTextMasked,
+          extractedAmount: null,
+          extractedName: null,
+          extractionInvalid: true,
+          matchType: "NONE",
+          settlementIds: "[]",
+          matchedUserId: null,
+          matchedCustomerName: null,
+          status: "DISMISSED",
+          autoConfirmed: false,
+        },
+      });
+    } catch {
+      return Response.json({ ok: true, duplicate: true });
+    }
+    await prisma.shop.update({ where: { id: shop.id }, data: { lastNotifyReceivedAt: new Date() } });
+    return Response.json({ ok: true, ignored: "not_deposit" });
+  }
+
   const extracted = await extractDepositFields(rawText);
   const amount = extracted?.amount ?? null;
   const depositorName = extracted?.depositorName ?? null;
@@ -123,7 +153,9 @@ export async function POST(
 
   // 안드로이드 + 확실함 조합만 자동 확정함. 아이폰 문자는 발신번호 위조 위험이 있어
   // 아무리 확실해도 셀러가 "확실한 입금 묶음"에서 직접 한 번 더 확인해야 함
-  if (outcome.type === "confident" && source === "ANDROID") {
+  // 추가 조건: 알림 글자에 "입금" 표현이 분명히 있을 때만(direction === "IN") 자동 확정.
+  // 애매한 알림(UNKNOWN)은 확실히 매칭돼도 셀러가 화면에서 한 번 눌러 확인함
+  if (outcome.type === "confident" && source === "ANDROID" && direction === "IN") {
     const applied = await applyDepositMatch({
       shopId: shop.id,
       actorUserId: shop.ownerUserId,

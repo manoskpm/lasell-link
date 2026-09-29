@@ -40,6 +40,27 @@ export function containsName(rawText: string, name: string): boolean {
   return trimmed.length > 0 && rawText.includes(trimmed);
 }
 
+/// 알림이 돈이 "들어온" 건지 "나간" 건지 글자로 먼저 가림.
+/// 출금·송금·결제 알림에도 금액과 사람 이름이 들어 있어서(예: 손님께 환불 송금),
+/// 이걸 안 막으면 나간 돈이 손님 입금으로 자동 확정될 수 있음.
+/// - IN: 입금 표현만 있음 → 평소대로 매칭, 확실하면 자동 확정 가능
+/// - OUT: 출금 표현만 있음 → 매칭하지 않고 기록만 남김 (AI 호출도 안 함)
+/// - UNKNOWN: 둘 다 없거나 둘 다 있음 → 매칭은 하되 자동 확정은 안 하고 셀러에게 물어봄
+export type DepositDirection = "IN" | "OUT" | "UNKNOWN";
+
+const INCOMING_PATTERN = /입금|받았|들어왔/;
+const OUTGOING_PATTERN = /출금|인출|송금|보냈|이체\s*완료|결제|승인|자동이체/;
+
+export function classifyDirection(rawText: string): DepositDirection {
+  // "입출금통장"처럼 통장 종류 이름에 든 "출금"은 방향과 상관없으니 먼저 지움
+  const text = rawText.replace(/입출금/g, "");
+  const incoming = INCOMING_PATTERN.test(text);
+  const outgoing = OUTGOING_PATTERN.test(text);
+  if (incoming && !outgoing) return "IN";
+  if (outgoing && !incoming) return "OUT";
+  return "UNKNOWN";
+}
+
 /// API 키가 없거나 호출이 실패하면 null을 돌려준다 (호출한 쪽에서 "확인 안 됨"으로 처리)
 export async function extractDepositFields(rawText: string): Promise<ExtractedDeposit | null> {
   if (!process.env.ANTHROPIC_API_KEY) {
