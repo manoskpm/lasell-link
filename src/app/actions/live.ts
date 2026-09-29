@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireOwnShop } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { planShipping } from "@/lib/shippingPlan";
-import { applyCoupon } from "@/lib/coupon";
+import { buildCustomerSettlement } from "@/lib/settlementBuilder";
 
 export type CloseBroadcastResult = {
   closedProducts: number;
@@ -106,7 +105,7 @@ export async function closeBroadcastAction(): Promise<CloseBroadcastResult> {
   let shippedCustomers = 0;
   let shippedOrders = 0;
 
-  for (const [userId, customerOrders] of byCustomer) {
+  for (const customerOrders of byCustomer.values()) {
     const user = customerOrders[0].user;
     if (!user) continue;
 
@@ -116,68 +115,9 @@ export async function closeBroadcastAction(): Promise<CloseBroadcastResult> {
       continue;
     }
 
-    await prisma.$transaction(async (tx) => {
-      const orderIds = customerOrders.map((order) => order.id);
-
-      const plan = await planShipping(tx, {
-        userId,
-        orderIds,
-        shippingFee: shop.shippingFee,
-        freeShippingOver: shop.freeShippingOver,
-      });
-
-      // 손님이 미리 골라둔 쿠폰이 있으면 여기서 적용
-      const itemsTotal = customerOrders.reduce(
-        (sum, order) =>
-          sum + order.items.reduce((s, i) => s + i.price * i.quantity, 0),
-        0
-      );
-      const applied = applyCoupon({
-        coupon: user.pendingCoupon,
-        itemsTotal,
-        shippingFee: plan.fee,
-      });
-
-      const created = await tx.settlement.create({
-        data: {
-          userId,
-          buyerName: user.name,
-          buyerPhone: user.phone,
-          depositorName: user.name,
-          zipcode: user.zipcode,
-          address: user.address ?? "",
-          addressDetail: user.addressDetail,
-          paymentMethod: "계좌이체",
-          shippingFee: applied.shippingFee,
-          shippingCredit: plan.credit,
-          discount: applied.discount,
-          couponId:
-            applied.discount > 0 || applied.shippingFee !== plan.fee
-              ? user.pendingCouponId
-              : null,
-        },
-      });
-
-      // 쓴 쿠폰은 비워서 다음 배송에 또 붙지 않게 함
-      if (user.pendingCouponId) {
-        await tx.user.update({
-          where: { id: userId },
-          data: { pendingCouponId: null },
-        });
-      }
-
-      await tx.order.updateMany({
-        where: { id: { in: orderIds } },
-        data: { settlementId: created.id },
-      });
-
-      if (plan.zeroOutSettlementIds.length > 0) {
-        await tx.settlement.updateMany({
-          where: { id: { in: plan.zeroOutSettlementIds } },
-          data: { shippingFee: 0 },
-        });
-      }
-    });
+    await prisma.$transaction((tx) =>
+      buildCustomerSettlement(tx, { shop, user, orders: customerOrders })
+    );
 
     shippedCustomers += 1;
     shippedOrders += customerOrders.length;

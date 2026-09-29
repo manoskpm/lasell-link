@@ -114,8 +114,10 @@ export default async function AdminSettlementsPage({
         <div>
           <h1 className="text-xl font-bold lg:text-2xl">정산 · 배송</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            손님이 보관중인 주문을 모아 정산하면 여기에 한 건으로 올라와요.
-            배송은 이 단위로 나갑니다.
+            방송이 끝나면 손님별 보관중인 주문이 자동으로 묶여 여기 올라와요.
+            급하면 <Link href="/admin/orders" className="underline">주문 · 매출</Link>
+            화면에서 &ldquo;이 손님 먼저 보내기&rdquo;로 미리 묶을 수도 있어요. 배송은 이
+            단위로 나갑니다.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

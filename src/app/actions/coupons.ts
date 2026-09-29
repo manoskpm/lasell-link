@@ -37,7 +37,7 @@ export async function createCouponAction(
   });
 
   revalidatePath("/admin/coupons");
-  revalidatePath("/my/settle");
+  revalidatePath("/my/orders");
   return { error: undefined };
 }
 
@@ -48,7 +48,7 @@ export async function toggleCouponActiveAction(
   await requireSellerConsole();
   await prisma.coupon.update({ where: { id: couponId }, data: { isActive } });
   revalidatePath("/admin/coupons");
-  revalidatePath("/my/settle");
+  revalidatePath("/my/orders");
   return { ok: true };
 }
 

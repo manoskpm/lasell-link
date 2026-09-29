@@ -4,15 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { requireOwnShop, requireSellerConsole } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
-import { applyCoupon } from "@/lib/coupon";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 import { sellingPrice } from "@/lib/price";
 import { computePaymentDueAt, isPaymentOverdue } from "@/lib/paymentDue";
-import { planShipping } from "@/lib/shippingPlan";
+import { buildCustomerSettlement } from "@/lib/settlementBuilder";
 import type { FormState } from "./auth";
-import { getStorefrontShop, storeClosedReason } from "@/lib/shop";
+import { storeClosedReason } from "@/lib/shop";
 
 type Tx = Prisma.TransactionClient;
 
@@ -196,123 +195,46 @@ export async function placeOrderAction(
   redirect(`/my/orders/${orderId}`);
 }
 
-/// 보관중인 주문 여러 건을 하나로 묶어 배송 요청(정산)
-export async function createSettlementAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  const user = await requireUser();
+/// 셀러가 한 손님의 보관중인 주문을 지금 바로 배송 대기로 묶음 ("이 손님 먼저 보내기").
+/// 손님은 구매만 하면 되고, 배송으로 넘기는 건 셀러가 화면에서 직접 누른다
+export async function settleCustomerNowAction(
+  userId: number
+): Promise<{ ok: true; settlementId: number } | { error: string }> {
+  const { shop } = await requireOwnShop();
 
-  const closed = await storeClosedReason();
-  if (closed) return { error: closed };
-
-  const orderIds = formData
-    .getAll("orderIds")
-    .map((value) => Number(value))
-    .filter((value) => value > 0);
-
-  const buyerName = String(formData.get("buyerName") ?? "").trim();
-  const buyerPhone = String(formData.get("buyerPhone") ?? "").trim();
-  const address = String(formData.get("address") ?? "").trim();
-  const couponId = Number(formData.get("couponId")) || null;
-
-  if (orderIds.length === 0) return { error: "정산할 주문을 선택해주세요." };
-  if (!buyerName || !buyerPhone || !address) {
-    return { error: "받는분 이름, 연락처, 주소는 필수예요." };
-  }
-
-  let settlementId: number;
   try {
-    const settlement = await prisma.$transaction(async (tx) => {
+    const settlementId = await prisma.$transaction(async (tx) => {
       const orders = await tx.order.findMany({
-        where: {
-          id: { in: orderIds },
-          userId: user.id,
-          settlementId: null,
-          canceledAt: null,
-        },
+        where: { userId, settlementId: null, canceledAt: null },
         include: { items: true },
+        orderBy: { createdAt: "asc" },
       });
-
       if (orders.length === 0) {
-        throw new Error("정산할 수 있는 주문이 없어요. 이미 정산됐거나 취소된 주문인지 확인해주세요.");
+        throw new Error("이 손님은 보관중인 주문이 없어요. 화면을 새로고침해서 확인해주세요.");
       }
 
-      const itemsTotal = orders.reduce(
-        (sum, order) =>
-          sum +
-          order.items.reduce((s, item) => s + item.price * item.quantity, 0),
-        0
-      );
-
-      const shop = await getStorefrontShop();
-      if (!shop) throw new Error("상점 정보를 찾을 수 없어요. 화면을 새로고침해주세요.");
-
-      const coupon = couponId
-        ? await tx.coupon.findUnique({ where: { id: couponId } })
-        : null;
-
-      // 배송비는 '그날 결제한 금액 전부'로 판정.
-      // 같은 날 이미 배송비를 냈으면 또 받지 않고,
-      // 나중에 더 사서 무료배송 기준을 넘기면 먼저 낸 배송비를 돌려줌(차감)
-      const plan = await planShipping(tx, {
-        userId: user.id,
-        orderIds: orders.map((order) => order.id),
-        shippingFee: shop.shippingFee,
-        freeShippingOver: shop.freeShippingOver,
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        include: { pendingCoupon: true },
       });
-
-      const applied = applyCoupon({
-        coupon,
-        itemsTotal,
-        shippingFee: plan.fee,
-      });
-
-      const created = await tx.settlement.create({
-        data: {
-          userId: user.id,
-          buyerName,
-          buyerPhone,
-          depositorName:
-            String(formData.get("depositorName") ?? "").trim() || buyerName,
-          zipcode: String(formData.get("zipcode") ?? "").trim() || null,
-          address,
-          addressDetail:
-            String(formData.get("addressDetail") ?? "").trim() || null,
-          memo: String(formData.get("memo") ?? "").trim() || null,
-          paymentMethod: String(formData.get("paymentMethod") ?? "계좌이체"),
-          shippingFee: applied.shippingFee,
-          shippingCredit: plan.credit,
-          discount: applied.discount,
-          couponId: applied.discount > 0 || coupon ? coupon?.id : null,
-        },
-      });
-
-      await tx.order.updateMany({
-        where: { id: { in: orders.map((order) => order.id) } },
-        data: { settlementId: created.id },
-      });
-
-      // 아직 입금 전인 같은 날 정산은 배송비를 아예 0원으로 고쳐줌
-      if (plan.zeroOutSettlementIds.length > 0) {
-        await tx.settlement.updateMany({
-          where: { id: { in: plan.zeroOutSettlementIds } },
-          data: { shippingFee: 0 },
-        });
+      if (!user) throw new Error("손님 정보를 찾을 수 없어요. 화면을 새로고침해주세요.");
+      if (!user.address?.trim()) {
+        throw new Error(
+          `${user.name}님은 배송지가 없어서 못 보내요. 손님에게 주소를 받아서 정산 화면에서 직접 넣어주세요.`
+        );
       }
 
-      return created;
+      return buildCustomerSettlement(tx, { shop, user, orders });
     });
-    settlementId = settlement.id;
+
+    revalidatePath("/", "layout");
+    return { ok: true, settlementId };
   } catch (error) {
     return {
       error:
         error instanceof Error ? error.message : "정산 처리 중 문제가 생겼어요.",
     };
   }
-
-  revalidatePath("/", "layout");
-  redirect(`/my/settlements/${settlementId}`);
 }
 
 export async function updatePaymentStatusAction(

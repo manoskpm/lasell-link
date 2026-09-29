@@ -100,15 +100,10 @@ export default async function MyOrderDetailPage({
         </Link>
       ) : (
         !order.canceledAt && (
-          <>
-            <p className="rounded-xl bg-zinc-50 px-3.5 py-3 text-sm text-zinc-600">
-              이 주문은 아직 보관중이에요. 다른 주문과 모아서 정산하면 배송비를
-              한 번만 내요.
-            </p>
-            <Link href="/my/settle" className="btn-primary">
-              먼저 배송받기
-            </Link>
-          </>
+          <p className="rounded-xl bg-zinc-50 px-3.5 py-3 text-sm text-zinc-600">
+            이 주문은 아직 보관중이에요. 방송이 끝나면 다른 주문과 모아서
+            자동으로 배송돼요.
+          </p>
         )
       )}
 

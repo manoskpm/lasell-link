@@ -136,13 +136,6 @@ export default async function MyOrdersPage() {
                 }))}
               selectedId={user.pendingCouponId}
             />
-
-            <Link
-              href="/my/settle"
-              className="py-2 text-center text-sm text-zinc-500 underline"
-            >
-              급하면 지금 바로 배송받기
-            </Link>
           </>
         )}
       </section>
