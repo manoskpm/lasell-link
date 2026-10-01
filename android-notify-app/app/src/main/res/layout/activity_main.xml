@@ -108,6 +108,34 @@
             android:layout_marginTop="8dp"
             android:text="알림 접근 허용하러 가기" />
 
+        <!-- 안드로이드 13 이상: 플레이스토어 밖에서 받은 앱은 알림 접근이 처음엔 막혀 있음 -->
+        <LinearLayout
+            android:id="@+id/restrictedHelp"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:padding="12dp"
+            android:background="#FFF4E5"
+            android:visibility="gone">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="허용 버튼이 회색이라 눌리지 않나요?"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="안드로이드가 직접 받은 앱을 한 번 막아둔 거예요. 이렇게 풀어주세요.\n① 아래 '앱 정보 열기'를 누르세요\n② 오른쪽 위 점 세 개(⋮)를 누르세요\n③ '제한된 설정 허용'을 누르세요\n④ 이 화면으로 돌아와 '알림 접근 허용하러 가기'를 다시 누르세요" />
+            <Button
+                android:id="@+id/buttonAppInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="앱 정보 열기" />
+        </LinearLayout>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -1,7 +1,9 @@
 # 라스켓 입금 알림 앱(안드로이드) 자동 빌드
 # android-notify-app/ 이 바뀌어 올라오면 깃허브가 APK를 만들어 "Artifacts"에 올려둔다.
 # 지금은 1단계: 디버그 APK가 실제로 만들어지는지(컴파일되는지)만 확인한다.
-# 고정 서명 키(업데이트용)는 대표님이 키 보관 위치를 정한 뒤 2단계로 붙인다.
+# 2단계: 깃허브 비밀값 4개(LASKET_KEYSTORE_BASE64 / LASKET_KEYSTORE_PASSWORD / LASKET_KEY_ALIAS /
+# LASKET_KEY_PASSWORD)가 들어 있으면 고정 서명 키로 정식(release) APK도 만든다. 없으면 이 단계는 건너뜀.
+# 키 원본은 대표님이 정한 곳(드라이브 마노스 > 라셀링크 비공개 폴더)에 보관, 비밀번호는 대표님이 직접.
 name: android-notify-app
 
 on:
@@ -15,6 +17,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.LASKET_KEYSTORE_BASE64 != '' }}
     defaults:
       run:
         working-directory: android-notify-app
@@ -57,3 +61,35 @@ jobs:
             android-notify-app/app/build/outputs/apk/debug/app-debug.apk
             android-notify-app/app/build/outputs/apk/debug/BUILD_INFO.txt
           retention-days: 30
+
+      # ── 2단계: 고정 서명 정식 APK (비밀값이 있을 때만) ──
+      - name: Build signed release APK
+        if: env.HAS_SIGNING_KEY == 'true'
+        env:
+          LASKET_KEYSTORE_PASSWORD: ${{ secrets.LASKET_KEYSTORE_PASSWORD }}
+          LASKET_KEY_ALIAS: ${{ secrets.LASKET_KEY_ALIAS }}
+          LASKET_KEY_PASSWORD: ${{ secrets.LASKET_KEY_PASSWORD }}
+        run: |
+          set -o pipefail
+          echo "${{ secrets.LASKET_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/lasket.jks"
+          export LASKET_KEYSTORE_PATH="$RUNNER_TEMP/lasket.jks"
+          if ! gradle --no-daemon assembleRelease 2>&1 | tee release.log; then
+            grep -E "^e: |What went wrong|^> |error:" -A3 release.log | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+          APK=app/build/outputs/apk/release/app-release.apk
+          {
+            echo "commit: $GITHUB_SHA"
+            echo "built_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
+          } | tee app/build/outputs/apk/release/BUILD_INFO.txt
+          rm -f "$RUNNER_TEMP/lasket.jks"
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_SIGNING_KEY == 'true'
+        with:
+          name: lasket-notify-release-${{ github.sha }}
+          path: |
+            android-notify-app/app/build/outputs/apk/release/app-release.apk
+            android-notify-app/app/build/outputs/apk/release/BUILD_INFO.txt
+          retention-days: 90

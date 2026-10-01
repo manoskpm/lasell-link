@@ -3,6 +3,15 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- 안드로이드 11부터는 다른 앱이 깔려 있는지 보려면 미리 적어둬야 함.
+         셀러 폰에 깔린 은행 앱을 자동으로 체크해 주려고 아래 4개만 확인함 -->
+    <queries>
+        <package android:name="com.kakaobank.channel" />
+        <package android:name="viva.republica.toss" />
+        <package android:name="com.kbstar.kbbank" />
+        <package android:name="com.shinhan.sbanking" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:label="@string/app_name"

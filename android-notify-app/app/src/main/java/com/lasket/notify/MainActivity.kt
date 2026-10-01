@@ -9,6 +9,7 @@ import android.provider.Settings
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -48,10 +49,18 @@ class MainActivity : AppCompatActivity() {
         inputUrl.setText(prefs.getString(KEY_URL, ""))
         inputSecret.setText(prefs.getString(KEY_SECRET, ""))
         val savedPackages = (prefs.getString(KEY_PACKAGES, "") ?: "").split(",").filter { it.isNotBlank() }.toSet()
-        checkKakaoBank.isChecked = savedPackages.contains(PKG_KAKAOBANK)
-        checkToss.isChecked = savedPackages.contains(PKG_TOSS)
-        checkKb.isChecked = savedPackages.contains(PKG_KB)
-        checkShinhan.isChecked = savedPackages.contains(PKG_SHINHAN)
+        if (prefs.contains(KEY_PACKAGES)) {
+            checkKakaoBank.isChecked = savedPackages.contains(PKG_KAKAOBANK)
+            checkToss.isChecked = savedPackages.contains(PKG_TOSS)
+            checkKb.isChecked = savedPackages.contains(PKG_KB)
+            checkShinhan.isChecked = savedPackages.contains(PKG_SHINHAN)
+        } else {
+            // 처음 켰을 때: 폰에 깔려 있는 은행 앱을 미리 체크해 둠 (셀러가 고를 일을 줄임)
+            checkKakaoBank.isChecked = isInstalled(PKG_KAKAOBANK)
+            checkToss.isChecked = isInstalled(PKG_TOSS)
+            checkKb.isChecked = isInstalled(PKG_KB)
+            checkShinhan.isChecked = isInstalled(PKG_SHINHAN)
+        }
         val knownPackages = setOf(PKG_KAKAOBANK, PKG_TOSS, PKG_KB, PKG_SHINHAN)
         inputExtraPackages.setText(savedPackages.filter { it !in knownPackages }.joinToString(","))
 
@@ -64,9 +73,27 @@ class MainActivity : AppCompatActivity() {
             inputExtraPackages.text.toString().split(",").map { it.trim() }.filter { it.isNotEmpty() }
                 .forEach { chosen.add(it) }
 
+            val url = inputUrl.text.toString().trim()
+            val secret = inputSecret.text.toString().trim()
+            // 잘못 넣은 경우: 무엇이 문제인지 + 어떻게 고치는지 같이 알려줌
+            if (!url.startsWith("https://")) {
+                inputUrl.error = "주소는 https:// 로 시작해요. 라스켓 설정 화면의 '주소'를 그대로 복사해 붙여넣어 주세요."
+                inputUrl.requestFocus()
+                return@setOnClickListener
+            }
+            if (secret.isEmpty()) {
+                inputSecret.error = "연동키가 비어 있어요. 라스켓 설정 화면에서 '연동키 발급하기'를 눌러 나온 키를 붙여넣어 주세요."
+                inputSecret.requestFocus()
+                return@setOnClickListener
+            }
+            if (chosen.isEmpty()) {
+                Toast.makeText(this, "은행을 하나도 고르지 않았어요. 입금받는 은행 앱을 체크해 주세요.", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+
             prefs.edit()
-                .putString(KEY_URL, inputUrl.text.toString().trim())
-                .putString(KEY_SECRET, inputSecret.text.toString().trim())
+                .putString(KEY_URL, url)
+                .putString(KEY_SECRET, secret)
                 .putString(KEY_PACKAGES, chosen.joinToString(","))
                 .apply()
 
@@ -75,6 +102,12 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.buttonNotificationAccess).setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+
+        findViewById<Button>(R.id.buttonAppInfo).setOnClickListener {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+            )
         }
 
         findViewById<Button>(R.id.buttonBatteryOptimization).setOnClickListener {
@@ -97,8 +130,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        val granted = isNotificationAccessGranted()
         findViewById<TextView>(R.id.statusListener).text =
-            if (isNotificationAccessGranted()) "허용됨 ✓" else "아직 허용 안 됨 — 아래 버튼을 눌러주세요"
+            if (granted) "허용됨 ✓" else "아직 허용 안 됨 — 아래 버튼을 눌러주세요"
+        // 안드로이드 13(API 33) 이상이고 아직 허용 전이면 "제한된 설정" 푸는 방법을 보여줌
+        findViewById<LinearLayout>(R.id.restrictedHelp).visibility =
+            if (!granted && Build.VERSION.SDK_INT >= 33) android.view.View.VISIBLE else android.view.View.GONE
+    }
+
+    private fun isInstalled(pkg: String): Boolean = try {
+        packageManager.getPackageInfo(pkg, 0)
+        true
+    } catch (e: Exception) {
+        false
     }
 
     private fun isNotificationAccessGranted(): Boolean {

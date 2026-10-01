@@ -17,9 +17,25 @@ android {
         versionName = "1.0"
     }
 
+    // 고정 서명 키: 깃허브 비밀값(환경 변수)이 있을 때만 씀. 키·비밀번호는 저장소에 절대 넣지 않음
+    val keystorePath = System.getenv("LASKET_KEYSTORE_PATH")
+    signingConfigs {
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("LASKET_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("LASKET_KEY_ALIAS")
+                keyPassword = System.getenv("LASKET_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (keystorePath != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
