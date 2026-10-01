@@ -31,8 +31,14 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      # 실패하면 원인 부분(What went wrong / e:)을 깃허브 "주석"으로 남김 — 로그 파일을 못 여는 곳에서도 원인을 볼 수 있게
       - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
+        run: |
+          set -o pipefail
+          if ! gradle --no-daemon assembleDebug 2>&1 | tee build.log; then
+            grep -E "^e: |What went wrong|^> |error:" -A3 build.log | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
 
       - name: Record version and SHA-256
         run: |
