@@ -1,0 +1,53 @@
+# 라스켓 입금 알림 앱(안드로이드) 자동 빌드
+# android-notify-app/ 이 바뀌어 올라오면 깃허브가 APK를 만들어 "Artifacts"에 올려둔다.
+# 지금은 1단계: 디버그 APK가 실제로 만들어지는지(컴파일되는지)만 확인한다.
+# 고정 서명 키(업데이트용)는 대표님이 키 보관 위치를 정한 뒤 2단계로 붙인다.
+name: android-notify-app
+
+on:
+  push:
+    paths:
+      - "android-notify-app/**"
+      - ".github/workflows/android-notify-app.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: android-notify-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # 저장소에 gradlew(래퍼)가 없어서 Gradle을 직접 설치해서 씀 (AGP 8.5.2 → Gradle 8.7 이상 필요)
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Record version and SHA-256
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          ls -l "$APK"
+          {
+            echo "commit: $GITHUB_SHA"
+            echo "built_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
+          } | tee app/build/outputs/apk/debug/BUILD_INFO.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lasket-notify-debug-${{ github.sha }}
+          path: |
+            android-notify-app/app/build/outputs/apk/debug/app-debug.apk
+            android-notify-app/app/build/outputs/apk/debug/BUILD_INFO.txt
+          retention-days: 30
